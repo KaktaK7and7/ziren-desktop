@@ -3,6 +3,7 @@ import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
+import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import { startCoreMock } from "../services/assistantCore";
 
 type Props = {
@@ -19,8 +20,9 @@ export default function MainScreen({ onLogout }: Props) {
   }
 
   useEffect(() => {
-    addLog("[GUI] Cyberpunk interface initialized");
+    addLog("[GUI] Cyberpsychosis interface initialized");
     addLog("[VOICE] Listening enabled");
+    addLog("[SYSTEM] Neural circuit skull online");
 
     const stopCore = startCoreMock(addLog);
 
@@ -52,10 +54,14 @@ export default function MainScreen({ onLogout }: Props) {
   }
 
   return (
-    <div className={isListening ? "screen main-screen listening-on" : "screen main-screen listening-off"}>
-      <div className="cyber-grid" />
-      <div className="cyber-lines" />
-      <div className="glitch-layer" />
+    <div
+      className={
+        isListening
+          ? "screen main-screen listening-on"
+          : "screen main-screen listening-off"
+      }
+    >
+      <CyberPsychoBackground isListening={isListening} />
 
       <div className="top-left">
         <SettingsButton onClick={handleSettingsClick} />

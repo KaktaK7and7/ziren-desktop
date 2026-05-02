@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
+import ListeningToggle from "../components/ListeningToggle";
 import { startCoreMock } from "../services/assistantCore";
-import { clearSession } from "../services/session";
 
 type Props = {
   onLogout: () => void;
@@ -11,6 +11,7 @@ type Props = {
 
 export default function MainScreen({ onLogout }: Props) {
   const [logs, setLogs] = useState<string[]>([]);
+  const [isListening, setIsListening] = useState(true);
 
   function addLog(log: string) {
     const time = new Date().toLocaleTimeString();
@@ -18,7 +19,8 @@ export default function MainScreen({ onLogout }: Props) {
   }
 
   useEffect(() => {
-    addLog("[GUI] Main screen opened");
+    addLog("[GUI] Cyberpunk interface initialized");
+    addLog("[VOICE] Listening enabled");
 
     const stopCore = startCoreMock(addLog);
 
@@ -31,23 +33,47 @@ export default function MainScreen({ onLogout }: Props) {
     addLog("[SETTINGS] Settings clicked");
   }
 
-  function handleLogout() {
-    clearSession();
-    onLogout();
+  function handleProfileClick() {
+    addLog("[PROFILE] Profile clicked");
+  }
+
+  function handleListeningToggle() {
+    setIsListening((prev) => {
+      const next = !prev;
+
+      if (next) {
+        addLog("[VOICE] Listening enabled");
+      } else {
+        addLog("[VOICE] Listening disabled");
+      }
+
+      return next;
+    });
   }
 
   return (
-    <div className="screen main-screen">
+    <div className={isListening ? "screen main-screen listening-on" : "screen main-screen listening-off"}>
+      <div className="cyber-grid" />
+      <div className="cyber-lines" />
+      <div className="glitch-layer" />
+
       <div className="top-left">
         <SettingsButton onClick={handleSettingsClick} />
       </div>
 
-      <button className="profile-button" onClick={() => addLog("[PROFILE] Profile clicked")}>
-        Kak_taK_?
+      <button className="profile-button" onClick={handleProfileClick}>
+        KaktaK7
       </button>
 
       <main className="assistant-center">
-        <LogoOrb large />
+        <div className="logo-shell">
+          <LogoOrb large />
+        </div>
+
+        <ListeningToggle
+          isListening={isListening}
+          onToggle={handleListeningToggle}
+        />
       </main>
 
       <LogTerminal logs={logs} />

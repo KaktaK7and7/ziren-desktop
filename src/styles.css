@@ -549,15 +549,16 @@ input {
 
 /* SVG CYBERPSYCHO BACKGROUND */
 
+/* SVG CYBERPSYCHO BACKGROUND */
+
 .cyberpsycho-bg {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 22%, rgba(0, 245, 255, 0.12), transparent 30%),
-    radial-gradient(circle at 80% 12%, rgba(255, 0, 85, 0.15), transparent 28%),
-    radial-gradient(circle at 10% 80%, rgba(255, 234, 0, 0.08), transparent 25%),
+    radial-gradient(circle at 50% 25%, rgba(0, 245, 255, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(255, 0, 85, 0.12), transparent 30%),
     #05060b;
 }
 
@@ -569,150 +570,103 @@ input {
   color: #ff174d;
 }
 
-.skull-svg {
+/* === SKULL LAYERS === */
+
+.skull {
   position: absolute;
-  top: 18px;
+  top: 48px;
   left: 50%;
-  width: 460px;
-  height: 360px;
+  width: 470px;
+  height: 260px;
   object-fit: contain;
   transform: translateX(-50%);
-  user-select: none;
   pointer-events: none;
+  user-select: none;
 }
 
-.skull-svg-base {
-  opacity: 0.34;
+.skull-base {
+  opacity: 0.28;
   filter:
     invert(1)
-    contrast(1.25)
-    brightness(0.95)
-    drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+    brightness(0.92)
+    drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
   mix-blend-mode: screen;
 }
 
-.skull-svg-glow {
-  opacity: 0.42;
+.skull-eyes {
+  opacity: 0.95;
+  filter:
+    invert(1)
+    brightness(2.4)
+    drop-shadow(0 0 8px currentColor)
+    drop-shadow(0 0 18px currentColor)
+    drop-shadow(0 0 35px currentColor);
+  mix-blend-mode: screen;
+  animation: eyeGlitch 3s infinite steps(1);
+}
+
+.skull-lines {
+  opacity: 0.9;
   filter:
     invert(1)
     sepia(1)
     saturate(8)
-    hue-rotate(135deg)
-    drop-shadow(0 0 12px currentColor)
-    drop-shadow(0 0 28px currentColor);
+    hue-rotate(150deg)
+    drop-shadow(0 0 6px currentColor)
+    drop-shadow(0 0 18px currentColor);
   mix-blend-mode: screen;
-  animation: skullGlowPulse 2.8s infinite ease-in-out;
+  animation: flowLines 2.2s linear infinite;
 }
 
-.listening-bg-off .skull-svg-glow {
+.listening-bg-off .skull-lines {
   filter:
     invert(1)
     sepia(1)
     saturate(8)
     hue-rotate(300deg)
-    drop-shadow(0 0 12px currentColor)
-    drop-shadow(0 0 28px currentColor);
-}
-
-@keyframes skullGlowPulse {
-  0%,
-  100% {
-    opacity: 0.32;
-    transform: translateX(-50%) scale(1);
-  }
-
-  50% {
-    opacity: 0.58;
-    transform: translateX(-50%) scale(1.018);
-  }
-}
-
-/* EYES OVER SVG */
-
-.skull-eye-glow {
-  position: absolute;
-  top: 152px;
-  width: 58px;
-  height: 22px;
-  background: currentColor;
-  opacity: 0.9;
-  clip-path: polygon(0 22%, 100% 0, 82% 72%, 18% 100%);
-  filter:
-    drop-shadow(0 0 10px currentColor)
-    drop-shadow(0 0 28px currentColor)
-    drop-shadow(0 0 48px currentColor);
-  mix-blend-mode: screen;
-  animation: eyeLag 3.1s infinite steps(1);
-}
-
-.skull-eye-left {
-  left: calc(50% - 75px);
-  transform: skewX(-12deg);
-}
-
-.skull-eye-right {
-  left: calc(50% + 17px);
-  transform: scaleX(-1) skewX(-12deg);
-}
-
-@keyframes eyeLag {
-  0%,
-  66%,
-  70%,
-  100% {
-    opacity: 0.9;
-  }
-
-  67% {
-    opacity: 0.04;
-  }
-
-  68% {
-    opacity: 1;
-    transform: translateX(3px) skewX(-12deg);
-  }
-
-  69% {
-    opacity: 0.2;
-  }
-}
-
-/* FLOWING CIRCUIT LIGHTS OVER SVG */
-
-.cyberpsycho-bg::before {
-  content: "";
-  position: absolute;
-  top: 80px;
-  left: 50%;
-  width: 470px;
-  height: 250px;
-  transform: translateX(-50%);
-  background:
-    linear-gradient(90deg, transparent 0 6%, currentColor 6% 7%, transparent 7% 100%),
-    linear-gradient(90deg, transparent 0 93%, currentColor 93% 94%, transparent 94% 100%),
-    linear-gradient(25deg, transparent 0 44%, currentColor 44% 44.8%, transparent 44.8% 100%),
-    linear-gradient(155deg, transparent 0 55%, currentColor 55% 55.8%, transparent 55.8% 100%),
-    linear-gradient(90deg, transparent 0 32%, currentColor 32% 33%, transparent 33% 100%),
-    linear-gradient(90deg, transparent 0 67%, currentColor 67% 68%, transparent 68% 100%);
-  opacity: 0.18;
-  filter:
-    drop-shadow(0 0 8px currentColor)
+    drop-shadow(0 0 6px currentColor)
     drop-shadow(0 0 18px currentColor);
-  mask-image: linear-gradient(to bottom, transparent, black 10%, black 80%, transparent);
-  animation: circuitSweep 2.4s infinite linear;
 }
 
-@keyframes circuitSweep {
+@keyframes flowLines {
   0% {
-    clip-path: inset(0 100% 0 0);
+    opacity: 0.3;
+    clip-path: inset(0 50% 0 50%);
   }
 
   45% {
+    opacity: 1;
     clip-path: inset(0 0 0 0);
   }
 
   100% {
-    clip-path: inset(0 0 0 100%);
+    opacity: 0.35;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes eyeGlitch {
+  0%,
+  65%,
+  70%,
+  100% {
+    opacity: 0.95;
+    transform: translateX(-50%);
+  }
+
+  66% {
+    opacity: 0.1;
+    transform: translateX(calc(-50% - 4px));
+  }
+
+  67% {
+    opacity: 1;
+    transform: translateX(calc(-50% + 5px));
+  }
+
+  68% {
+    opacity: 0.2;
+    transform: translateX(-50%);
   }
 }
 

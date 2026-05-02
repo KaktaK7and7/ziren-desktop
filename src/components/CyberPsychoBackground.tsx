@@ -1,4 +1,6 @@
-import skullSvg from "../assets/skull.svg";
+import base from "../assets/skull_base.svg";
+import eyes from "../assets/skull_eyes.svg";
+import lines from "../assets/skull_lines.svg";
 
 type Props = {
   isListening: boolean;
@@ -15,15 +17,19 @@ export default function CyberPsychoBackground({ isListening }: Props) {
     >
       <div className="noise-layer" />
 
-      <img className="skull-svg skull-svg-base" src={skullSvg} alt="" />
-      <img className="skull-svg skull-svg-glow" src={skullSvg} alt="" />
+      {/* BASE */}
+      <img src={base} className="skull skull-base" />
 
-      <div className="skull-eye-glow skull-eye-left" />
-      <div className="skull-eye-glow skull-eye-right" />
+      {/* FLOW LINES */}
+      <img src={lines} className="skull skull-lines" />
 
+      {/* EYES */}
+      <img src={eyes} className="skull skull-eyes" />
+
+      {/* GLITCH */}
       <div className="random-glitches">
-        {Array.from({ length: 22 }).map((_, index) => (
-          <span key={index} className={`glitch-fragment gf-${index + 1}`} />
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className={`glitch-fragment gf-${i + 1}`} />
         ))}
       </div>
     </div>

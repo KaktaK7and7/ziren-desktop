@@ -62,8 +62,8 @@ input {
 }
 
 .app-logo-large {
-  width: 150px;
-  height: 150px;
+  width: 200px;
+  height: 200px;
 }
 
 .app-logo img {
@@ -574,10 +574,10 @@ input {
 
 .skull {
   position: absolute;
-  top: 48px;
+  top: -5px;
   left: 50%;
-  width: 470px;
-  height: 260px;
+  width: 600px;
+  height: 350px;
   object-fit: contain;
   transform: translateX(-50%);
   pointer-events: none;

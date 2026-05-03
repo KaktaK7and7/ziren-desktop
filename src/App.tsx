@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import LoadingScreen from "./screens/LoadingScreen";
 import LoginScreen from "./screens/LoginScreen";
 import MainScreen from "./screens/MainScreen";
+import TrayMenu from "./screens/TrayMenu";
 import { hasSavedSession } from "./services/session";
 
 type Screen = "loading" | "login" | "main";
 
 export default function App() {
+  const currentWindow = getCurrentWindow();
+
+  if (currentWindow.label === "tray-menu") {
+    return <TrayMenu />;
+  }
+
   const [screen, setScreen] = useState<Screen>("loading");
   const [guiActive, setGuiActive] = useState(true);
 

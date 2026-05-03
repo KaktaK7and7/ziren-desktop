@@ -1,11 +1,68 @@
+use once_cell::sync::Lazy;
+use std::process::{Child, Command};
+use std::sync::Mutex;
+
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
+static ASSISTANT_PROCESS: Lazy<Mutex<Option<Child>>> = Lazy::new(|| Mutex::new(None));
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+fn start_assistant_core() {
+    let mut process = ASSISTANT_PROCESS.lock().unwrap();
+
+    if process.is_some() {
+        return;
+    }
+
+    #[cfg(debug_assertions)]
+    let child = {
+        let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .unwrap()
+            .to_path_buf();
+
+        let assistant_root = project_root.join("ziren_assistant_v2");
+        let python_path = assistant_root.join(".venv").join("Scripts").join("python.exe");
+
+        Command::new(python_path)
+            .arg("-m")
+            .arg("app.main")
+            .current_dir(assistant_root)
+            .spawn()
+    };
+
+    #[cfg(not(debug_assertions))]
+    let child = Command::new("assistant-core.exe").spawn();
+
+    match child {
+        Ok(child) => {
+            *process = Some(child);
+            println!("✅ Assistant core started");
+        }
+        Err(error) => {
+            println!("❌ Failed to start assistant core: {}", error);
+        }
+    }
+}
+
+fn stop_assistant_core() {
+    let mut process = ASSISTANT_PROCESS.lock().unwrap();
+
+    if let Some(child) = process.as_mut() {
+        let _ = child.kill();
+        let _ = child.wait();
+        println!("🛑 Assistant core stopped");
+    }
+
+    *process = None;
 }
 
 fn show_main_window(app: &AppHandle) {
@@ -40,6 +97,11 @@ fn show_tray_menu(app: &AppHandle, x: f64, y: f64) {
     }
 }
 
+fn exit_app(app: AppHandle) {
+    stop_assistant_core();
+    app.exit(0);
+}
+
 #[tauri::command]
 fn tray_open(app: AppHandle) {
     hide_tray_menu(&app);
@@ -54,7 +116,7 @@ fn tray_hide(app: AppHandle) {
 
 #[tauri::command]
 fn tray_exit(app: AppHandle) {
-    app.exit(0);
+    exit_app(app);
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -68,6 +130,8 @@ pub fn run() {
             tray_exit
         ])
         .setup(|app| {
+            start_assistant_core();
+
             WebviewWindowBuilder::new(app, "tray-menu", WebviewUrl::App("/".into()))
                 .title("Ziren Tray Menu")
                 .inner_size(230.0, 160.0)
@@ -135,6 +199,7 @@ pub fn run() {
             }
 
             _ => {}
+
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

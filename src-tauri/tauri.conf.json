@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Ziren_assistant",
         "width": 500,
         "height": 600,

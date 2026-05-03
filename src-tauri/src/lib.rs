@@ -1,5 +1,4 @@
 use tauri::{
-    menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
@@ -32,7 +31,10 @@ fn hide_tray_menu(app: &AppHandle) {
 
 fn show_tray_menu(app: &AppHandle, x: f64, y: f64) {
     if let Some(window) = app.get_webview_window("tray-menu") {
-        let _ = window.set_position(tauri::PhysicalPosition::new(x as i32 - 240, y as i32 - 170));
+        let _ = window.set_position(tauri::PhysicalPosition::new(
+            x as i32 - 240,
+            y as i32 - 170,
+        ));
         let _ = window.show();
         let _ = window.set_focus();
     }
@@ -66,36 +68,20 @@ pub fn run() {
             tray_exit
         ])
         .setup(|app| {
-            WebviewWindowBuilder::new(
-                app,
-                "tray-menu",
-                WebviewUrl::App("index.html".into()),
-            )
-            .title("Ziren Tray Menu")
-            .inner_size(230.0, 160.0)
-            .decorations(false)
-            .resizable(false)
-            .visible(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .build()?;
-
-            let open = MenuItem::with_id(app, "open", "Открыть", true, None::<&str>)?;
-            let hide = MenuItem::with_id(app, "hide", "Скрыть", true, None::<&str>)?;
-            let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &hide, &quit])?;
+            WebviewWindowBuilder::new(app, "tray-menu", WebviewUrl::App("/".into()))
+                .title("Ziren Tray Menu")
+                .inner_size(230.0, 160.0)
+                .decorations(false)
+                .resizable(false)
+                .visible(false)
+                .transparent(true)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .build()?;
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
-                .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "open" => show_main_window(app),
-                    "hide" => hide_main_window(app),
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
                 .on_tray_icon_event(|tray, event| match event {
                     TrayIconEvent::Click {
                         button: MouseButton::Left,
@@ -128,27 +114,27 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    api.prevent_close();
+        .on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                api.prevent_close();
 
-                    if window.label() == "main" {
-                        let _ = window.emit("pause-ui", ());
-                        let _ = window.hide();
-                    } else if window.label() == "tray-menu" {
-                        let _ = window.hide();
-                    }
+                if window.label() == "main" {
+                    let _ = window.emit("pause-ui", ());
+                    let _ = window.hide();
                 }
 
-                WindowEvent::Focused(false) => {
-                    if window.label() == "tray-menu" {
-                        let _ = window.hide();
-                    }
+                if window.label() == "tray-menu" {
+                    let _ = window.hide();
                 }
-
-                _ => {}
             }
+
+            WindowEvent::Focused(false) => {
+                if window.label() == "tray-menu" {
+                    let _ = window.hide();
+                }
+            }
+
+            _ => {}
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

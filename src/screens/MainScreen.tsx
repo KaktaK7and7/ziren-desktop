@@ -4,7 +4,10 @@ import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
-import { startCoreMock } from "../services/assistantCore";
+import {
+  getAssistantStatus,
+  toggleAssistantListening,
+} from "../services/assistantApi";
 
 type Props = {
   onLogout: () => void;
@@ -13,6 +16,7 @@ type Props = {
 export default function MainScreen({ onLogout }: Props) {
   const [logs, setLogs] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   function addLog(log: string) {
     const time = new Date().toLocaleTimeString();
@@ -21,14 +25,28 @@ export default function MainScreen({ onLogout }: Props) {
 
   useEffect(() => {
     addLog("[GUI] Cyberpsychosis interface initialized");
-    addLog("[VOICE] Listening enabled");
-    addLog("[SYSTEM] Neural circuit skull online");
+    addLog("[SYSTEM] Connecting to assistant...");
 
-    const stopCore = startCoreMock(addLog);
+    async function initAssistantStatus() {
+      try {
+        const status = await getAssistantStatus();
 
-    return () => {
-      stopCore();
-    };
+        setIsListening(status.listening);
+        addLog("[SYSTEM] Assistant connected");
+
+        if (status.listening) {
+          addLog("[VOICE] Listening enabled");
+        } else {
+          addLog("[VOICE] Listening disabled");
+        }
+      } catch (error) {
+        setIsListening(false);
+        addLog("[ERROR] Assistant not reachable");
+        console.error(error);
+      }
+    }
+
+    initAssistantStatus();
   }, []);
 
   function handleSettingsClick() {
@@ -39,18 +57,27 @@ export default function MainScreen({ onLogout }: Props) {
     addLog("[PROFILE] Profile clicked");
   }
 
-  function handleListeningToggle() {
-    setIsListening((prev) => {
-      const next = !prev;
+  async function handleListeningToggle() {
+    if (isLoading) return;
 
-      if (next) {
+    try {
+      setIsLoading(true);
+
+      const status = await toggleAssistantListening();
+
+      setIsListening(status.listening);
+
+      if (status.listening) {
         addLog("[VOICE] Listening enabled");
       } else {
         addLog("[VOICE] Listening disabled");
       }
-
-      return next;
-    });
+    } catch (error) {
+      addLog("[ERROR] Failed to toggle listening");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

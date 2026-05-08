@@ -955,3 +955,23 @@ input {
     transform: translate(0, 0);
   }
 }
+
+.profile-button {
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.profile-modal {
+  position: relative;
+  z-index: 1000000;
+}

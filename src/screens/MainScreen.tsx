@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
+import ProfileModal from "../components/ProfileModal";
 
 import {
   getAssistantStatus,
@@ -11,7 +13,6 @@ import {
 } from "../services/assistantApi";
 
 import { getCurrentUser } from "../services/session";
-import { getProfileUrl } from "../services/auth";
 
 type Props = {
   onLogout: () => void;
@@ -29,7 +30,10 @@ function formatApiLog(log: AssistantApiLog): string {
     ? new Date(log.ts).toLocaleTimeString()
     : new Date().toLocaleTimeString();
 
-  const level = log.level ? log.level.toUpperCase() : "INFO";
+  const level = log.level
+    ? log.level.toUpperCase()
+    : "INFO";
+
   const event = log.event ?? "Unknown event";
 
   const meta =
@@ -40,20 +44,38 @@ function formatApiLog(log: AssistantApiLog): string {
   return `[${time}] [${level}] ${event}${meta}`;
 }
 
-export default function MainScreen({ onLogout }: Props) {
+export default function MainScreen({
+  onLogout,
+}: Props) {
   const user = getCurrentUser();
 
-  const username = user?.username ?? "Unknown";
+  const username =
+    user?.username ?? "Unknown";
 
-  const [guiLogs, setGuiLogs] = useState<string[]>([]);
-  const [assistantLogs, setAssistantLogs] = useState<string[]>([]);
-  const [isListening, setIsListening] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [guiLogs, setGuiLogs] = useState<
+    string[]
+  >([]);
 
-  const logs = [...guiLogs, ...assistantLogs].slice(-150);
+  const [assistantLogs, setAssistantLogs] =
+    useState<string[]>([]);
+
+  const [isListening, setIsListening] =
+    useState(true);
+
+  const [isLoading, setIsLoading] =
+    useState(false);
+
+  const [isProfileOpen, setIsProfileOpen] =
+    useState(false);
+
+  const logs = [
+    ...guiLogs,
+    ...assistantLogs,
+  ].slice(-150);
 
   function addGuiLog(log: string) {
-    const time = new Date().toLocaleTimeString();
+    const time =
+      new Date().toLocaleTimeString();
 
     setGuiLogs((prev) => [
       ...prev.slice(-30),
@@ -62,26 +84,40 @@ export default function MainScreen({ onLogout }: Props) {
   }
 
   useEffect(() => {
-    addGuiLog("[GUI] Cyberpsychosis interface initialized");
-    addGuiLog("[SYSTEM] Connecting to assistant...");
+    addGuiLog(
+      "[GUI] Cyberpsychosis interface initialized"
+    );
+
+    addGuiLog(
+      "[SYSTEM] Connecting to assistant..."
+    );
 
     async function initAssistantStatus() {
       try {
-        const status = await getAssistantStatus();
+        const status =
+          await getAssistantStatus();
 
         setIsListening(status.listening);
 
-        addGuiLog("[SYSTEM] Assistant connected");
+        addGuiLog(
+          "[SYSTEM] Assistant connected"
+        );
 
         if (status.listening) {
-          addGuiLog("[VOICE] Listening enabled");
+          addGuiLog(
+            "[VOICE] Listening enabled"
+          );
         } else {
-          addGuiLog("[VOICE] Listening disabled");
+          addGuiLog(
+            "[VOICE] Listening disabled"
+          );
         }
       } catch (error) {
         setIsListening(false);
 
-        addGuiLog("[ERROR] Assistant not reachable");
+        addGuiLog(
+          "[ERROR] Assistant not reachable"
+        );
 
         console.error(error);
       }
@@ -95,15 +131,20 @@ export default function MainScreen({ onLogout }: Props) {
 
     async function loadAssistantLogs() {
       try {
-        const response = await fetch("http://127.0.0.1:8787/logs");
+        const response = await fetch(
+          "http://127.0.0.1:8787/logs"
+        );
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(
+            `HTTP ${response.status}`
+          );
         }
 
         const data = await response.json();
 
-        const apiLogs: AssistantApiLog[] = data.logs ?? [];
+        const apiLogs: AssistantApiLog[] =
+          data.logs ?? [];
 
         if (mounted) {
           setAssistantLogs(
@@ -114,7 +155,8 @@ export default function MainScreen({ onLogout }: Props) {
         }
       } catch (error) {
         if (mounted) {
-          const time = new Date().toLocaleTimeString();
+          const time =
+            new Date().toLocaleTimeString();
 
           setAssistantLogs([
             `[${time}] [ERROR] Assistant logs API not reachable`,
@@ -127,10 +169,11 @@ export default function MainScreen({ onLogout }: Props) {
 
     loadAssistantLogs();
 
-    const intervalId = window.setInterval(
-      loadAssistantLogs,
-      1500
-    );
+    const intervalId =
+      window.setInterval(
+        loadAssistantLogs,
+        1500
+      );
 
     return () => {
       mounted = false;
@@ -139,16 +182,14 @@ export default function MainScreen({ onLogout }: Props) {
   }, []);
 
   function handleSettingsClick() {
-    addGuiLog("[SETTINGS] Settings clicked");
+    addGuiLog(
+      "[SETTINGS] Settings clicked"
+    );
   }
 
   function handleProfileClick() {
-    addGuiLog("[PROFILE] Opening profile");
-
-    window.open(
-      getProfileUrl(),
-      "_blank"
-    );
+    addGuiLog("[PROFILE] Profile opened");
+    setIsProfileOpen(true);
   }
 
   async function handleListeningToggle() {
@@ -157,19 +198,28 @@ export default function MainScreen({ onLogout }: Props) {
     try {
       setIsLoading(true);
 
-      addGuiLog("[VOICE] Switching listening mode...");
+      addGuiLog(
+        "[VOICE] Switching listening mode..."
+      );
 
-      const status = await toggleAssistantListening();
+      const status =
+        await toggleAssistantListening();
 
       setIsListening(status.listening);
 
       if (status.listening) {
-        addGuiLog("[VOICE] Listening enabled");
+        addGuiLog(
+          "[VOICE] Listening enabled"
+        );
       } else {
-        addGuiLog("[VOICE] Listening disabled");
+        addGuiLog(
+          "[VOICE] Listening disabled"
+        );
       }
     } catch (error) {
-      addGuiLog("[ERROR] Failed to toggle listening");
+      addGuiLog(
+        "[ERROR] Failed to toggle listening"
+      );
 
       console.error(error);
     } finally {
@@ -185,10 +235,14 @@ export default function MainScreen({ onLogout }: Props) {
           : "screen main-screen listening-off"
       }
     >
-      <CyberPsychoBackground isListening={isListening} />
+      <CyberPsychoBackground
+        isListening={isListening}
+      />
 
       <div className="top-left">
-        <SettingsButton onClick={handleSettingsClick} />
+        <SettingsButton
+          onClick={handleSettingsClick}
+        />
       </div>
 
       <button
@@ -205,11 +259,20 @@ export default function MainScreen({ onLogout }: Props) {
 
         <ListeningToggle
           isListening={isListening}
-          onToggle={handleListeningToggle}
+          onToggle={
+            handleListeningToggle
+          }
         />
       </main>
 
       <LogTerminal logs={logs} />
+
+      {isProfileOpen && (
+        <ProfileModal
+          onClose={() => setIsProfileOpen(false)}
+          onLogout={onLogout}
+        />
+      )}
     </div>
   );
 }

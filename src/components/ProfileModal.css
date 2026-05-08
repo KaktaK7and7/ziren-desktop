@@ -1,0 +1,105 @@
+.profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.profile-modal {
+  width: 380px;
+  padding: 22px;
+  border-radius: 22px;
+  color: white;
+  background:
+    radial-gradient(circle at top, rgba(0, 255, 255, 0.16), transparent 42%),
+    linear-gradient(145deg, rgba(2, 5, 12, 0.98), rgba(10, 0, 18, 0.96));
+  border: 1px solid rgba(0, 255, 255, 0.42);
+  box-shadow:
+    0 0 42px rgba(0, 255, 255, 0.25),
+    inset 0 0 34px rgba(0, 255, 255, 0.06);
+}
+
+.profile-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.profile-modal__eyebrow {
+  margin: 0 0 4px;
+  color: #00f5ff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.profile-modal__header h2 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.profile-modal__close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.profile-modal__avatar {
+  width: 86px;
+  height: 86px;
+  margin: 22px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #23fff2, #d7ff00);
+  color: #02050a;
+  font-size: 38px;
+  font-weight: 900;
+}
+
+.profile-modal__info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-modal__info div {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(0, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.profile-modal__info span {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.profile-modal__info strong {
+  text-align: right;
+  color: #eaffff;
+}
+
+.profile-modal__logout {
+  width: 100%;
+  height: 42px;
+  margin-top: 18px;
+  border: 1px solid rgba(255, 77, 109, 0.55);
+  border-radius: 12px;
+  background: rgba(255, 77, 109, 0.12);
+  color: #ff7b93;
+  font-weight: 800;
+  cursor: pointer;
+}

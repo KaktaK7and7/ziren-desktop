@@ -26,6 +26,7 @@ export default function LogTerminal({ logs }: Props) {
             {log}
           </div>
         ))}
+
         <div ref={bottomRef} />
       </div>
     </section>

@@ -1,21 +1,18 @@
-const MOCK_LOGS = [
-  "[GUI] Main window initialized",
-  "[AUTH] Session loaded",
-  "[CORE] Waiting for Python core connection...",
-  "[STT] Vosk stream initialized",
-  "[TTS] Silero ready",
-  "[WAKE] Waiting for wake word: мелисса / змея",
-];
+export type AssistantLog = {
+  ts: string;
+  level: "info" | "warn" | "error";
+  event: string;
+  meta?: Record<string, unknown>;
+};
 
-export function startCoreMock(onLog: (log: string) => void) {
-  let index = 0;
+export async function fetchAssistantLogs(): Promise<AssistantLog[]> {
+  const response = await fetch("http://127.0.0.1:8787/logs");
 
-  const interval = window.setInterval(() => {
-    onLog(MOCK_LOGS[index % MOCK_LOGS.length]);
-    index += 1;
-  }, 1400);
+  if (!response.ok) {
+    throw new Error(`Assistant logs request failed: ${response.status}`);
+  }
 
-  return () => {
-    window.clearInterval(interval);
-  };
+  const data = await response.json();
+
+  return data.logs ?? [];
 }

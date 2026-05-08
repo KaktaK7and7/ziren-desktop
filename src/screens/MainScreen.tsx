@@ -13,35 +13,61 @@ type Props = {
   onLogout: () => void;
 };
 
+type AssistantApiLog = {
+  ts: string;
+  level?: string;
+  event?: string;
+  meta?: Record<string, unknown>;
+};
+
+function formatApiLog(log: AssistantApiLog): string {
+  const time = log.ts
+    ? new Date(log.ts).toLocaleTimeString()
+    : new Date().toLocaleTimeString();
+
+  const level = log.level ? log.level.toUpperCase() : "INFO";
+  const event = log.event ?? "Unknown event";
+
+  const meta =
+    log.meta && Object.keys(log.meta).length > 0
+      ? ` ${JSON.stringify(log.meta)}`
+      : "";
+
+  return `[${time}] [${level}] ${event}${meta}`;
+}
+
 export default function MainScreen({ onLogout }: Props) {
-  const [logs, setLogs] = useState<string[]>([]);
+  const [guiLogs, setGuiLogs] = useState<string[]>([]);
+  const [assistantLogs, setAssistantLogs] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  function addLog(log: string) {
+  const logs = [...guiLogs, ...assistantLogs].slice(-150);
+
+  function addGuiLog(log: string) {
     const time = new Date().toLocaleTimeString();
-    setLogs((prev) => [...prev.slice(-150), `[${time}] ${log}`]);
+    setGuiLogs((prev) => [...prev.slice(-30), `[${time}] ${log}`]);
   }
 
   useEffect(() => {
-    addLog("[GUI] Cyberpsychosis interface initialized");
-    addLog("[SYSTEM] Connecting to assistant...");
+    addGuiLog("[GUI] Cyberpsychosis interface initialized");
+    addGuiLog("[SYSTEM] Connecting to assistant...");
 
     async function initAssistantStatus() {
       try {
         const status = await getAssistantStatus();
 
         setIsListening(status.listening);
-        addLog("[SYSTEM] Assistant connected");
+        addGuiLog("[SYSTEM] Assistant connected");
 
         if (status.listening) {
-          addLog("[VOICE] Listening enabled");
+          addGuiLog("[VOICE] Listening enabled");
         } else {
-          addLog("[VOICE] Listening disabled");
+          addGuiLog("[VOICE] Listening disabled");
         }
       } catch (error) {
         setIsListening(false);
-        addLog("[ERROR] Assistant not reachable");
+        addGuiLog("[ERROR] Assistant not reachable");
         console.error(error);
       }
     }
@@ -49,12 +75,56 @@ export default function MainScreen({ onLogout }: Props) {
     initAssistantStatus();
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    let errorShown = false;
+
+    async function loadAssistantLogs() {
+      try {
+        const response = await fetch("http://127.0.0.1:8787/logs");
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const apiLogs: AssistantApiLog[] = data.logs ?? [];
+
+        if (mounted) {
+          setAssistantLogs(apiLogs.slice(-120).map(formatApiLog));
+          errorShown = false;
+        }
+      } catch (error) {
+        if (mounted && !errorShown) {
+          const time = new Date().toLocaleTimeString();
+
+          setAssistantLogs([
+            `[${time}] [ERROR] Assistant logs API not reachable`,
+          ]);
+
+          errorShown = true;
+        }
+
+        console.error(error);
+      }
+    }
+
+    loadAssistantLogs();
+
+    const intervalId = window.setInterval(loadAssistantLogs, 1500);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
   function handleSettingsClick() {
-    addLog("[SETTINGS] Settings clicked");
+    addGuiLog("[SETTINGS] Settings clicked");
   }
 
   function handleProfileClick() {
-    addLog("[PROFILE] Profile clicked");
+    addGuiLog("[PROFILE] Profile clicked");
   }
 
   async function handleListeningToggle() {
@@ -62,18 +132,19 @@ export default function MainScreen({ onLogout }: Props) {
 
     try {
       setIsLoading(true);
+      addGuiLog("[VOICE] Switching listening mode...");
 
       const status = await toggleAssistantListening();
 
       setIsListening(status.listening);
 
       if (status.listening) {
-        addLog("[VOICE] Listening enabled");
+        addGuiLog("[VOICE] Listening enabled");
       } else {
-        addLog("[VOICE] Listening disabled");
+        addGuiLog("[VOICE] Listening disabled");
       }
     } catch (error) {
-      addLog("[ERROR] Failed to toggle listening");
+      addGuiLog("[ERROR] Failed to toggle listening");
       console.error(error);
     } finally {
       setIsLoading(false);

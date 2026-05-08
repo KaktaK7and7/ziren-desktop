@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import LoadingScreen from "./screens/LoadingScreen";
 import LoginScreen from "./screens/LoginScreen";
 import MainScreen from "./screens/MainScreen";
+import TrayMenu from "./screens/TrayMenu";
 
 import { validateSavedSession } from "./services/auth";
 import { getCurrentUser } from "./services/session";
@@ -11,6 +13,9 @@ import { getCurrentUser } from "./services/session";
 type Screen = "loading" | "login" | "main";
 
 export default function App() {
+  const currentWindow = getCurrentWindow();
+  const isTrayMenu = currentWindow.label === "tray-menu";
+
   const [screen, setScreen] = useState<Screen>("loading");
 
   async function startAssistantAndOpenMain() {
@@ -24,6 +29,8 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (isTrayMenu) return;
+
     async function bootstrap() {
       const localUser = getCurrentUser();
 
@@ -42,23 +49,19 @@ export default function App() {
     }
 
     bootstrap();
-  }, []);
+  }, [isTrayMenu]);
+
+  if (isTrayMenu) {
+    return <TrayMenu />;
+  }
 
   if (screen === "loading") {
     return <LoadingScreen />;
   }
 
   if (screen === "login") {
-    return (
-      <LoginScreen
-        onLoginSuccess={startAssistantAndOpenMain}
-      />
-    );
+    return <LoginScreen onLoginSuccess={startAssistantAndOpenMain} />;
   }
 
-  return (
-    <MainScreen
-      onLogout={() => setScreen("login")}
-    />
-  );
+  return <MainScreen onLogout={() => setScreen("login")} />;
 }

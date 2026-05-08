@@ -137,6 +137,13 @@ fn tray_hide(app: AppHandle) {
     hide_main_window(&app);
 }
 
+
+#[tauri::command]
+fn tray_menu_hide(app: AppHandle) {
+    hide_tray_menu(&app);
+}
+
+
 #[tauri::command]
 fn tray_exit(app: AppHandle) {
     exit_app(app);
@@ -152,6 +159,7 @@ pub fn run() {
             start_assistant_core,
             tray_open,
             tray_hide,
+            tray_menu_hide,
             tray_exit
         ])
 

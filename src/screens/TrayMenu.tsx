@@ -1,7 +1,23 @@
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./TrayMenu.css";
 
 export default function TrayMenu() {
+  useEffect(() => {
+    const currentWindow = getCurrentWindow();
+
+    const unlistenPromise = currentWindow.onFocusChanged(({ payload }) => {
+      if (!payload) {
+        invoke("tray_menu_hide");
+      }
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
+
   return (
     <div className="tray-menu-page">
       <div className="tray-menu">
@@ -10,8 +26,13 @@ export default function TrayMenu() {
           <span>ZIREN CONTROL</span>
         </div>
 
-        <button onClick={() => invoke("tray_open")}>Открыть GUI</button>
-        <button onClick={() => invoke("tray_hide")}>Скрыть GUI</button>
+        <button onClick={() => invoke("tray_open")}>
+          Открыть GUI
+        </button>
+
+        <button onClick={() => invoke("tray_hide")}>
+          Скрыть GUI
+        </button>
 
         <button className="danger" onClick={() => invoke("tray_exit")}>
           Выход

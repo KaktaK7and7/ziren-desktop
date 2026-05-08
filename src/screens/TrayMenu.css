@@ -11,17 +11,25 @@
   padding: 10px;
   box-sizing: border-box;
 
-  background: linear-gradient(
-    135deg,
-    rgba(3, 15, 20, 0.96),
-    rgba(0, 45, 55, 0.92)
-  );
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(0, 255, 255, 0.12),
+      transparent 42%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(2, 4, 10, 0.98),
+      rgba(5, 8, 18, 0.96),
+      rgba(0, 15, 22, 0.94)
+    );
 
-  border: 1px solid rgba(0, 255, 255, 0.7);
+  border: 1px solid rgba(0, 210, 255, 0.45);
 
   box-shadow:
-    0 0 18px rgba(0, 255, 255, 0.35),
-    inset 0 0 24px rgba(0, 255, 255, 0.08);
+    0 0 22px rgba(0, 255, 255, 0.22),
+    inset 0 0 28px rgba(0, 255, 255, 0.06),
+    inset 0 0 60px rgba(0, 0, 0, 0.7);
 
   clip-path: polygon(
     0 0,
@@ -41,19 +49,19 @@
   align-items: center;
   gap: 8px;
 
-  color: #00f5ff;
+  color: #00eaff;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 1.4px;
-  text-shadow: 0 0 8px rgba(0, 255, 255, 0.8);
+  text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
 }
 
 .tray-menu__dot {
-  width: 10px;
-  height: 10px;
-  background: #00f5ff;
+  width: 9px;
+  height: 9px;
+  background: #00eaff;
   border-radius: 50%;
-  box-shadow: 0 0 12px #00f5ff;
+  box-shadow: 0 0 12px #00eaff;
 }
 
 .tray-menu button {
@@ -61,8 +69,8 @@
   height: 30px;
   margin-top: 7px;
 
-  border: 1px solid rgba(0, 255, 255, 0.45);
-  background: rgba(0, 255, 255, 0.08);
+  border: 1px solid rgba(0, 220, 255, 0.32);
+  background: rgba(0, 20, 28, 0.72);
   color: #dffcff;
 
   font-size: 12px;
@@ -72,21 +80,24 @@
 
   transition:
     background 0.12s ease,
-    border-color 0.12s ease;
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .tray-menu button:hover {
-  background: rgba(0, 255, 255, 0.22);
-  border-color: rgba(0, 255, 255, 0.95);
+  background: rgba(0, 255, 255, 0.13);
+  border-color: rgba(0, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.22);
 }
 
 .tray-menu button.danger {
   color: #ff4d6d;
-  border-color: rgba(255, 77, 109, 0.5);
-  background: rgba(255, 77, 109, 0.08);
+  border-color: rgba(255, 77, 109, 0.42);
+  background: rgba(35, 0, 12, 0.72);
 }
 
 .tray-menu button.danger:hover {
-  background: rgba(255, 77, 109, 0.22);
-  border-color: rgba(255, 77, 109, 0.95);
+  background: rgba(255, 77, 109, 0.16);
+  border-color: rgba(255, 77, 109, 0.85);
+  box-shadow: 0 0 10px rgba(255, 77, 109, 0.2);
 }

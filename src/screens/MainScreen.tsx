@@ -4,10 +4,14 @@ import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
+
 import {
   getAssistantStatus,
   toggleAssistantListening,
 } from "../services/assistantApi";
+
+import { getCurrentUser } from "../services/session";
+import { getProfileUrl } from "../services/auth";
 
 type Props = {
   onLogout: () => void;
@@ -37,6 +41,10 @@ function formatApiLog(log: AssistantApiLog): string {
 }
 
 export default function MainScreen({ onLogout }: Props) {
+  const user = getCurrentUser();
+
+  const username = user?.username ?? "Unknown";
+
   const [guiLogs, setGuiLogs] = useState<string[]>([]);
   const [assistantLogs, setAssistantLogs] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(true);
@@ -46,7 +54,11 @@ export default function MainScreen({ onLogout }: Props) {
 
   function addGuiLog(log: string) {
     const time = new Date().toLocaleTimeString();
-    setGuiLogs((prev) => [...prev.slice(-30), `[${time}] ${log}`]);
+
+    setGuiLogs((prev) => [
+      ...prev.slice(-30),
+      `[${time}] ${log}`,
+    ]);
   }
 
   useEffect(() => {
@@ -58,6 +70,7 @@ export default function MainScreen({ onLogout }: Props) {
         const status = await getAssistantStatus();
 
         setIsListening(status.listening);
+
         addGuiLog("[SYSTEM] Assistant connected");
 
         if (status.listening) {
@@ -67,7 +80,9 @@ export default function MainScreen({ onLogout }: Props) {
         }
       } catch (error) {
         setIsListening(false);
+
         addGuiLog("[ERROR] Assistant not reachable");
+
         console.error(error);
       }
     }
@@ -77,7 +92,6 @@ export default function MainScreen({ onLogout }: Props) {
 
   useEffect(() => {
     let mounted = true;
-    let errorShown = false;
 
     async function loadAssistantLogs() {
       try {
@@ -88,21 +102,23 @@ export default function MainScreen({ onLogout }: Props) {
         }
 
         const data = await response.json();
+
         const apiLogs: AssistantApiLog[] = data.logs ?? [];
 
         if (mounted) {
-          setAssistantLogs(apiLogs.slice(-120).map(formatApiLog));
-          errorShown = false;
+          setAssistantLogs(
+            apiLogs
+              .slice(-120)
+              .map(formatApiLog)
+          );
         }
       } catch (error) {
-        if (mounted && !errorShown) {
+        if (mounted) {
           const time = new Date().toLocaleTimeString();
 
           setAssistantLogs([
             `[${time}] [ERROR] Assistant logs API not reachable`,
           ]);
-
-          errorShown = true;
         }
 
         console.error(error);
@@ -111,7 +127,10 @@ export default function MainScreen({ onLogout }: Props) {
 
     loadAssistantLogs();
 
-    const intervalId = window.setInterval(loadAssistantLogs, 1500);
+    const intervalId = window.setInterval(
+      loadAssistantLogs,
+      1500
+    );
 
     return () => {
       mounted = false;
@@ -124,7 +143,12 @@ export default function MainScreen({ onLogout }: Props) {
   }
 
   function handleProfileClick() {
-    addGuiLog("[PROFILE] Profile clicked");
+    addGuiLog("[PROFILE] Opening profile");
+
+    window.open(
+      getProfileUrl(),
+      "_blank"
+    );
   }
 
   async function handleListeningToggle() {
@@ -132,6 +156,7 @@ export default function MainScreen({ onLogout }: Props) {
 
     try {
       setIsLoading(true);
+
       addGuiLog("[VOICE] Switching listening mode...");
 
       const status = await toggleAssistantListening();
@@ -145,6 +170,7 @@ export default function MainScreen({ onLogout }: Props) {
       }
     } catch (error) {
       addGuiLog("[ERROR] Failed to toggle listening");
+
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -165,8 +191,11 @@ export default function MainScreen({ onLogout }: Props) {
         <SettingsButton onClick={handleSettingsClick} />
       </div>
 
-      <button className="profile-button" onClick={handleProfileClick}>
-        KaktaK7
+      <button
+        className="profile-button"
+        onClick={handleProfileClick}
+      >
+        {username}
       </button>
 
       <main className="assistant-center">

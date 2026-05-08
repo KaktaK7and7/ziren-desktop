@@ -1,63 +1,65 @@
-export type SessionData = {
-  userId: string;
-  sessionId: string;
+export type UserData = {
+  id: string;
+  username: string;
+  email: string;
 };
 
-const USER_ID_KEY = "ziren_user_id";
-const SESSION_ID_KEY = "ziren_session_id";
+export type SessionData = {
+  token: string;
+  user: UserData;
+};
+
+const SESSION_KEY = "ziren_desktop_session";
 const REMEMBER_KEY = "ziren_remember";
 
+
+
 export function saveSession(data: SessionData, remember: boolean) {
+  const serialized = JSON.stringify(data);
+
   if (remember) {
-    localStorage.setItem(USER_ID_KEY, data.userId);
-    localStorage.setItem(SESSION_ID_KEY, data.sessionId);
+    localStorage.setItem(SESSION_KEY, serialized);
     localStorage.setItem(REMEMBER_KEY, "true");
+    sessionStorage.removeItem(SESSION_KEY);
   } else {
-    sessionStorage.setItem(USER_ID_KEY, data.userId);
-    sessionStorage.setItem(SESSION_ID_KEY, data.sessionId);
+    sessionStorage.setItem(SESSION_KEY, serialized);
+    localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(REMEMBER_KEY);
   }
 }
 
-export function hasSavedSession() {
-  const remember = localStorage.getItem(REMEMBER_KEY) === "true";
 
-  if (remember) {
-    return Boolean(
-      localStorage.getItem(USER_ID_KEY) &&
-        localStorage.getItem(SESSION_ID_KEY)
-    );
-  }
-
-  return Boolean(
-    sessionStorage.getItem(USER_ID_KEY) &&
-      sessionStorage.getItem(SESSION_ID_KEY)
-  );
-}
-
-export function clearSession() {
-  localStorage.removeItem(USER_ID_KEY);
-  localStorage.removeItem(SESSION_ID_KEY);
-  localStorage.removeItem(REMEMBER_KEY);
-
-  sessionStorage.removeItem(USER_ID_KEY);
-  sessionStorage.removeItem(SESSION_ID_KEY);
-}
 
 export function getSession(): SessionData | null {
-  const userId =
-    localStorage.getItem(USER_ID_KEY) || sessionStorage.getItem(USER_ID_KEY);
+  const raw =
+    localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
 
-  const sessionId =
-    localStorage.getItem(SESSION_ID_KEY) ||
-    sessionStorage.getItem(SESSION_ID_KEY);
-
-  if (!userId || !sessionId) {
+  if (!raw) {
     return null;
   }
 
-  return {
-    userId,
-    sessionId,
-  };
+  try {
+    return JSON.parse(raw) as SessionData;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+export function getCurrentUser() {
+  return getSession()?.user ?? null;
+}
+
+export function getSessionToken() {
+  return getSession()?.token ?? null;
+}
+
+export function hasSavedSession() {
+  return getSession() !== null;
+}
+
+export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(REMEMBER_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
 }

@@ -16,12 +16,14 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
+    if (isLoading) return;
+
     setError("");
     setIsLoading(true);
 
     try {
       await loginUser({
-        email,
+        email: email.trim(),
         password,
         remember,
       });
@@ -50,6 +52,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
             type="email"
             placeholder="you@example.com"
             value={email}
+            autoComplete="email"
+            disabled={isLoading}
             onChange={(event) => setEmail(event.target.value)}
           />
         </label>
@@ -60,6 +64,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
             type="password"
             placeholder="Введите пароль"
             value={password}
+            autoComplete="current-password"
+            disabled={isLoading}
             onChange={(event) => setPassword(event.target.value)}
           />
         </label>
@@ -68,6 +74,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
           <input
             type="checkbox"
             checked={remember}
+            disabled={isLoading}
             onChange={(event) => setRemember(event.target.checked)}
           />
           <span>Запомнить меня</span>

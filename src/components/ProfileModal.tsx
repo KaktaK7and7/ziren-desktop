@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+
 import {
   getCurrentUser,
   clearSession,
   type UserData,
 } from "../services/session";
+
 import {
   fetchDesktopProfile,
   getProfileUrl,
   resolveAuthAssetUrl,
 } from "../services/auth";
+
 import "./ProfileModal.css";
 
 type Props = {
@@ -56,8 +60,13 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
     onLogout();
   }
 
-  function handleOpenSiteProfile() {
-    window.open(getProfileUrl(), "_blank");
+  async function handleOpenSiteProfile() {
+    try {
+      await openUrl(getProfileUrl());
+    } catch (err) {
+      setError("Не удалось открыть профиль в браузере");
+      console.error(err);
+    }
   }
 
   useEffect(() => {
@@ -124,7 +133,7 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
         </section>
 
         <main className="profile-content-grid">
-          <section className="profile-panel profile-about-panel">
+          <section className="profile-panel">
             <div className="profile-panel-head">
               <span>OVERVIEW</span>
               <h3>Информация</h3>
@@ -153,14 +162,17 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             </div>
 
             <div className="profile-actions">
-              <button onClick={handleOpenSiteProfile}>Открыть профиль на сайте</button>
+              <button onClick={handleOpenSiteProfile}>
+                Открыть профиль в браузере
+              </button>
+
               <button className="danger" onClick={handleLogout}>
                 Выйти из аккаунта
               </button>
             </div>
           </section>
 
-          <section className="profile-panel profile-progress-panel">
+          <section className="profile-panel">
             <div className="profile-panel-head">
               <span>PROGRESS</span>
               <h3>Прогресс</h3>
@@ -188,26 +200,26 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             </div>
 
             <p className="profile-muted-text">
-              Здесь позже будет прогресс пользователя, достижения, активность и игровые события.
+              Здесь позже будет прогресс, достижения, игровые события и активность.
             </p>
           </section>
 
-          <section className="profile-panel profile-achievements-panel">
+          <section className="profile-panel">
             <div className="profile-panel-head">
               <span>ACHIEVEMENTS</span>
               <h3>Достижения</h3>
             </div>
 
             <div className="profile-achievements">
-              <div className="profile-achievement locked">?</div>
-              <div className="profile-achievement locked">?</div>
-              <div className="profile-achievement locked">?</div>
-              <div className="profile-achievement locked">?</div>
-              <div className="profile-achievement locked">?</div>
+              <div className="profile-achievement">?</div>
+              <div className="profile-achievement">?</div>
+              <div className="profile-achievement">?</div>
+              <div className="profile-achievement">?</div>
+              <div className="profile-achievement">?</div>
             </div>
           </section>
 
-          <section className="profile-panel profile-social-panel">
+          <section className="profile-panel">
             <div className="profile-panel-head">
               <span>SOCIAL</span>
               <h3>Социальные функции</h3>

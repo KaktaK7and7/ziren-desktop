@@ -1,4 +1,10 @@
-import { saveSession, getSessionToken, clearSession } from "./session";
+import {
+  saveSession,
+  getSessionToken,
+  clearSession,
+  updateSessionUser,
+  type UserData,
+} from "./session";
 
 const AUTH_SITE_URL = "https://www.ziren.store";
 
@@ -11,13 +17,31 @@ type LoginParams = {
 type DesktopLoginResponse = {
   ok: boolean;
   token?: string;
-  user?: {
-    id: string;
-    username: string;
-    email: string;
-  };
+  user?: UserData;
   error?: string;
 };
+
+type DesktopMeResponse = {
+  ok: boolean;
+  user?: UserData;
+  error?: string;
+};
+
+export function resolveAuthAssetUrl(url?: string) {
+  if (!url) {
+    return "";
+  }
+
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+
+  return `${AUTH_SITE_URL}${url}`;
+}
+
+export function getProfileUrl() {
+  return `${AUTH_SITE_URL}/profile`;
+}
 
 export async function loginUser(params: LoginParams) {
   const email = params.email.trim();
@@ -55,11 +79,11 @@ export async function loginUser(params: LoginParams) {
   return session;
 }
 
-export async function validateSavedSession() {
+export async function fetchDesktopProfile() {
   const token = getSessionToken();
 
   if (!token) {
-    return null;
+    throw new Error("Нет токена авторизации");
   }
 
   const response = await fetch(`${AUTH_SITE_URL}/api/desktop/me`, {
@@ -69,21 +93,22 @@ export async function validateSavedSession() {
     },
   });
 
-  if (!response.ok) {
-    clearSession();
-    return null;
+  const data = (await response.json()) as DesktopMeResponse;
+
+  if (!response.ok || !data.ok || !data.user) {
+    throw new Error(data.error || "Не удалось загрузить профиль");
   }
 
-  const data = await response.json();
-
-  if (!data.ok || !data.user) {
-    clearSession();
-    return null;
-  }
+  updateSessionUser(data.user);
 
   return data.user;
 }
 
-export function getProfileUrl() {
-  return `${AUTH_SITE_URL}/profile`;
+export async function validateSavedSession() {
+  try {
+    return await fetchDesktopProfile();
+  } catch {
+    clearSession();
+    return null;
+  }
 }

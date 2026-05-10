@@ -2,6 +2,9 @@ export type UserData = {
   id: string;
   username: string;
   email: string;
+  avatar_url?: string;
+  created_at?: string;
+  last_login_at?: string;
 };
 
 export type SessionData = {
@@ -11,8 +14,6 @@ export type SessionData = {
 
 const SESSION_KEY = "ziren_desktop_session";
 const REMEMBER_KEY = "ziren_remember";
-
-
 
 export function saveSession(data: SessionData, remember: boolean) {
   const serialized = JSON.stringify(data);
@@ -28,8 +29,6 @@ export function saveSession(data: SessionData, remember: boolean) {
   }
 }
 
-
-
 export function getSession(): SessionData | null {
   const raw =
     localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
@@ -44,6 +43,24 @@ export function getSession(): SessionData | null {
     clearSession();
     return null;
   }
+}
+
+export function updateSessionUser(user: UserData) {
+  const session = getSession();
+
+  if (!session) {
+    return;
+  }
+
+  const remember = localStorage.getItem(REMEMBER_KEY) === "true";
+
+  saveSession(
+    {
+      ...session,
+      user,
+    },
+    remember
+  );
 }
 
 export function getCurrentUser() {

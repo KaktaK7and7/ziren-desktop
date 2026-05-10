@@ -11,6 +11,7 @@ import {
   fetchDesktopProfile,
   getProfileUrl,
   resolveAuthAssetUrl,
+  uploadDesktopAvatar,
 } from "../services/auth";
 
 import "./ProfileModal.css";
@@ -55,6 +56,25 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
     }
   }
 
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      setError("");
+      setIsSyncing(true);
+
+      const updatedUser = await uploadDesktopAvatar(file);
+      setUser(updatedUser);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка загрузки аватарки");
+    } finally {
+      setIsSyncing(false);
+      event.target.value = "";
+    }
+  }
+
   function handleLogout() {
     clearSession();
     onLogout();
@@ -71,6 +91,14 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
 
   useEffect(() => {
     syncProfile();
+
+    const intervalId = window.setInterval(() => {
+      syncProfile();
+    }, 20000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -85,9 +113,7 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
           </div>
 
           <div className="profile-topbar-actions">
-            <button onClick={syncProfile} disabled={isSyncing}>
-              {isSyncing ? "Синхронизация..." : "Синхронизировать"}
-            </button>
+            {isSyncing && <span className="profile-sync-status">SYNC...</span>}
 
             <button onClick={onClose}>Назад</button>
           </div>
@@ -108,6 +134,16 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
               ) : (
                 <div className="profile-avatar-fallback">{initial}</div>
               )}
+
+              <label className="profile-avatar-upload">
+                {isSyncing ? "Загрузка..." : "Сменить"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleAvatarChange}
+                  disabled={isSyncing}
+                />
+              </label>
             </div>
 
             <div className="profile-main-info">

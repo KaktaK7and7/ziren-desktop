@@ -112,3 +112,33 @@ export async function validateSavedSession() {
     return null;
   }
 }
+
+
+export async function uploadDesktopAvatar(file: File) {
+  const token = getSessionToken();
+
+  if (!token) {
+    throw new Error("Нет токена авторизации");
+  }
+
+  const formData = new FormData();
+  formData.append("avatar", file);
+
+  const response = await fetch(`${AUTH_SITE_URL}/api/desktop/avatar`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = (await response.json()) as DesktopMeResponse;
+
+  if (!response.ok || !data.ok || !data.user) {
+    throw new Error(data.error || "Не удалось загрузить аватарку");
+  }
+
+  updateSessionUser(data.user);
+
+  return data.user;
+}

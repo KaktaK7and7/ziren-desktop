@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
@@ -6,11 +6,17 @@ import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import ProfileModal from "../components/ProfileModal";
+import ListeningOverlay from "../components/ListeningOverlay";
 
 import {
   getAssistantStatus,
   toggleAssistantListening,
 } from "../services/assistantApi";
+
+import {
+  fetchAssistantEvents,
+  type AssistantEvent,
+} from "../services/assistantEvents";
 
 import { getCurrentUser } from "../services/session";
 
@@ -24,6 +30,12 @@ type AssistantApiLog = {
   event?: string;
   meta?: Record<string, unknown>;
 };
+
+type AssistantUiState =
+  | "idle"
+  | "listening"
+  | "thinking"
+  | "speaking";
 
 function formatApiLog(log: AssistantApiLog): string {
   const time = log.ts
@@ -67,6 +79,17 @@ export default function MainScreen({
 
   const [isProfileOpen, setIsProfileOpen] =
     useState(false);
+
+  const [assistantUiState, setAssistantUiState] =
+    useState<AssistantUiState>("idle");
+
+  const [
+    isListeningOverlayActive,
+    setIsListeningOverlayActive,
+  ] = useState(false);
+
+  const processedEventIdsRef =
+    useRef<Set<string>>(new Set());
 
   const logs = [
     ...guiLogs,
@@ -124,6 +147,114 @@ export default function MainScreen({
     }
 
     initAssistantStatus();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    function applyAssistantEvent(event: AssistantEvent) {
+      switch (event.type) {
+        case "assistant.ready":
+          setIsListeningOverlayActive(false);
+          setAssistantUiState("idle");
+          break;
+
+        case "tts.finished":
+        case "listening.enabled":
+          setAssistantUiState("idle");
+          break;
+
+        case "listening.disabled":
+          setIsListeningOverlayActive(false);
+          setAssistantUiState("idle");
+          break;
+
+        case "wake_word.detected":
+          console.log("[Assistant Event]", event.type, event.payload);
+          setIsListeningOverlayActive(true);
+          setAssistantUiState("listening");
+          break;
+
+        case "command.received":
+          setIsListeningOverlayActive(true);
+          setAssistantUiState("listening");
+          break;
+
+        case "speech.recognized":
+          setIsListeningOverlayActive(false);
+          setAssistantUiState(
+            event.payload.mode === "ai"
+              ? "thinking"
+              : "idle"
+          );
+          break;
+
+        case "ai.request.started":
+          setIsListeningOverlayActive(false);
+          setAssistantUiState("thinking");
+          break;
+
+        case "ai.response.received":
+          setAssistantUiState("thinking");
+          break;
+
+        case "tts.started":
+          if (event.payload.source === "command_timeout") {
+            setIsListeningOverlayActive(false);
+          }
+
+          setAssistantUiState("speaking");
+          break;
+
+        case "command.module.executed":
+        case "command.unknown":
+          setIsListeningOverlayActive(false);
+          setAssistantUiState("speaking");
+          break;
+      }
+    }
+
+    async function loadAssistantEvents() {
+      try {
+        const events =
+          await fetchAssistantEvents();
+
+        if (!mounted) return;
+
+        const processedIds =
+          processedEventIdsRef.current;
+
+        for (const event of events) {
+          if (processedIds.has(event.id)) {
+            continue;
+          }
+
+          processedIds.add(event.id);
+          applyAssistantEvent(event);
+        }
+
+        if (processedIds.size > 500) {
+          processedEventIdsRef.current = new Set(
+            events.slice(-300).map((event) => event.id)
+          );
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadAssistantEvents();
+
+    const intervalId =
+      window.setInterval(
+        loadAssistantEvents,
+        800
+      );
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   useEffect(() => {
@@ -230,13 +361,22 @@ export default function MainScreen({
   return (
     <div
       className={
-        isListening
-          ? "screen main-screen listening-on"
-          : "screen main-screen listening-off"
+        [
+          "screen",
+          "main-screen",
+          isListening
+            ? "listening-on"
+            : "listening-off",
+          `state-${assistantUiState}`,
+        ].join(" ")
       }
     >
       <CyberPsychoBackground
         isListening={isListening}
+      />
+
+      <ListeningOverlay
+        active={isListeningOverlayActive}
       />
 
       <div className="top-left">

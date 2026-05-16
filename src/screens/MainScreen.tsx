@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
@@ -90,6 +91,8 @@ export default function MainScreen({
 
   const processedEventIdsRef =
     useRef<Set<string>>(new Set());
+  const overlayHideTimeoutRef =
+    useRef<number | null>(null);
 
   const logs = [
     ...guiLogs,
@@ -104,6 +107,47 @@ export default function MainScreen({
       ...prev.slice(-30),
       `[${time}] ${log}`,
     ]);
+  }
+
+  async function showScreenOverlay() {
+    if (overlayHideTimeoutRef.current !== null) {
+      window.clearTimeout(overlayHideTimeoutRef.current);
+      overlayHideTimeoutRef.current = null;
+    }
+
+    setIsListeningOverlayActive(true);
+
+    try {
+      await invoke("show_listening_overlay");
+    } catch (error) {
+      console.error("Failed to show screen overlay:", error);
+    }
+  }
+
+  async function hideScreenOverlay() {
+    if (overlayHideTimeoutRef.current !== null) {
+      window.clearTimeout(overlayHideTimeoutRef.current);
+      overlayHideTimeoutRef.current = null;
+    }
+
+    setIsListeningOverlayActive(false);
+
+    try {
+      await invoke("hide_listening_overlay");
+    } catch (error) {
+      console.error("Failed to hide screen overlay:", error);
+    }
+  }
+
+  function hideScreenOverlaySoon(delayMs = 320) {
+    if (overlayHideTimeoutRef.current !== null) {
+      window.clearTimeout(overlayHideTimeoutRef.current);
+    }
+
+    overlayHideTimeoutRef.current = window.setTimeout(() => {
+      overlayHideTimeoutRef.current = null;
+      void hideScreenOverlay();
+    }, delayMs);
   }
 
   useEffect(() => {
@@ -155,7 +199,7 @@ export default function MainScreen({
     function applyAssistantEvent(event: AssistantEvent) {
       switch (event.type) {
         case "assistant.ready":
-          setIsListeningOverlayActive(false);
+          void hideScreenOverlay();
           setAssistantUiState("idle");
           break;
 
@@ -165,23 +209,28 @@ export default function MainScreen({
           break;
 
         case "listening.disabled":
-          setIsListeningOverlayActive(false);
+          void hideScreenOverlay();
           setAssistantUiState("idle");
           break;
 
         case "wake_word.detected":
           console.log("[Assistant Event]", event.type, event.payload);
-          setIsListeningOverlayActive(true);
+          void showScreenOverlay();
           setAssistantUiState("listening");
           break;
 
         case "command.received":
-          setIsListeningOverlayActive(true);
+          void showScreenOverlay();
+          setAssistantUiState("listening");
+          break;
+
+        case "ai.followup.started":
+          void showScreenOverlay();
           setAssistantUiState("listening");
           break;
 
         case "speech.recognized":
-          setIsListeningOverlayActive(false);
+          hideScreenOverlaySoon();
           setAssistantUiState(
             event.payload.mode === "ai"
               ? "thinking"
@@ -190,7 +239,7 @@ export default function MainScreen({
           break;
 
         case "ai.request.started":
-          setIsListeningOverlayActive(false);
+          void hideScreenOverlay();
           setAssistantUiState("thinking");
           break;
 
@@ -200,15 +249,26 @@ export default function MainScreen({
 
         case "tts.started":
           if (event.payload.source === "command_timeout") {
-            setIsListeningOverlayActive(false);
+            void hideScreenOverlay();
           }
 
           setAssistantUiState("speaking");
           break;
 
+        case "ai.followup.captured":
+          hideScreenOverlaySoon();
+          setAssistantUiState("thinking");
+          break;
+
+        case "ai.followup.timeout":
+        case "ai.followup.skipped":
+          void hideScreenOverlay();
+          setAssistantUiState("idle");
+          break;
+
         case "command.module.executed":
         case "command.unknown":
-          setIsListeningOverlayActive(false);
+          void hideScreenOverlay();
           setAssistantUiState("speaking");
           break;
       }
@@ -253,6 +313,10 @@ export default function MainScreen({
 
     return () => {
       mounted = false;
+      if (overlayHideTimeoutRef.current !== null) {
+        window.clearTimeout(overlayHideTimeoutRef.current);
+      }
+      void hideScreenOverlay();
       window.clearInterval(intervalId);
     };
   }, []);

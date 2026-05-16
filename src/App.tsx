@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import LoadingScreen from "./screens/LoadingScreen";
 import LoginScreen from "./screens/LoginScreen";
 import MainScreen from "./screens/MainScreen";
+import ScreenOverlay from "./screens/ScreenOverlay";
 import TrayMenu from "./screens/TrayMenu";
 
 import { validateSavedSession } from "./services/auth";
@@ -15,6 +16,7 @@ type Screen = "loading" | "login" | "main";
 export default function App() {
   const currentWindow = getCurrentWindow();
   const isTrayMenu = currentWindow.label === "tray-menu";
+  const isScreenOverlay = currentWindow.label === "screen-overlay";
 
   const [screen, setScreen] = useState<Screen>("loading");
 
@@ -29,7 +31,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (isTrayMenu) return;
+    if (isTrayMenu || isScreenOverlay) return;
 
     async function bootstrap() {
       const localUser = getCurrentUser();
@@ -49,7 +51,11 @@ export default function App() {
     }
 
     bootstrap();
-  }, [isTrayMenu]);
+  }, [isTrayMenu, isScreenOverlay]);
+
+  if (isScreenOverlay) {
+    return <ScreenOverlay />;
+  }
 
   if (isTrayMenu) {
     return <TrayMenu />;

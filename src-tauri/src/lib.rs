@@ -3,6 +3,7 @@ use std::process::{Child, Command};
 use std::sync::Mutex;
 
 use tauri::{
+    PhysicalPosition, PhysicalSize,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
@@ -106,6 +107,56 @@ fn hide_tray_menu(app: &AppHandle) {
     }
 }
 
+fn fit_screen_overlay_to_primary_monitor(app: &AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("screen-overlay")
+        .ok_or_else(|| "screen-overlay window not found".to_string())?;
+
+    let monitor = app
+        .primary_monitor()
+        .map_err(|error| error.to_string())?
+        .ok_or_else(|| "primary monitor not found".to_string())?;
+
+    let position = monitor.position();
+    let size = monitor.size();
+
+    window
+        .set_position(PhysicalPosition::new(position.x, position.y))
+        .map_err(|error| error.to_string())?;
+    window
+        .set_size(PhysicalSize::new(size.width, size.height))
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("screen-overlay")
+        .ok_or_else(|| "screen-overlay window not found".to_string())?;
+
+    let _ = fit_screen_overlay_to_primary_monitor(&app);
+    let _ = window.set_ignore_cursor_events(true);
+    let _ = window.set_focusable(false);
+
+    window
+        .set_always_on_top(true)
+        .map_err(|error| error.to_string())?;
+    window.show().map_err(|error| error.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_listening_overlay(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("screen-overlay") {
+        window.hide().map_err(|error| error.to_string())?;
+    }
+
+    Ok(())
+}
+
 fn show_tray_menu(app: &AppHandle, x: f64, y: f64) {
     if let Some(window) = app.get_webview_window("tray-menu") {
         let _ = window.set_position(
@@ -160,7 +211,9 @@ pub fn run() {
             tray_open,
             tray_hide,
             tray_menu_hide,
-            tray_exit
+            tray_exit,
+            show_listening_overlay,
+            hide_listening_overlay
         ])
 
         .setup(|app| {
@@ -178,6 +231,26 @@ pub fn run() {
             .always_on_top(true)
             .skip_taskbar(true)
             .build()?;
+
+            let overlay = WebviewWindowBuilder::new(
+                app,
+                "screen-overlay",
+                WebviewUrl::App("/".into()),
+            )
+            .title("Ziren Listening Overlay")
+            .inner_size(800.0, 600.0)
+            .decorations(false)
+            .resizable(false)
+            .visible(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(false)
+            .focusable(false)
+            .build()?;
+
+            let _ = overlay.set_ignore_cursor_events(true);
+            let _ = fit_screen_overlay_to_primary_monitor(app.handle());
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())

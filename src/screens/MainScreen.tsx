@@ -147,6 +147,13 @@ export default function MainScreen({
     }, delayMs);
   }
 
+  async function syncAssistantStatus() {
+    const status =
+      await getAssistantStatus();
+
+    setIsListening(status.listening);
+  }
+
   useEffect(() => {
     addGuiLog(
       "[GUI] Cyberpsychosis interface initialized"
@@ -177,8 +184,6 @@ export default function MainScreen({
           );
         }
       } catch (error) {
-        setIsListening(false);
-
         addGuiLog(
           "[ERROR] Assistant not reachable"
         );
@@ -193,19 +198,55 @@ export default function MainScreen({
   useEffect(() => {
     let mounted = true;
 
+    async function syncListeningStatus() {
+      try {
+        const status =
+          await getAssistantStatus();
+
+        if (mounted) {
+          setIsListening(status.listening);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    syncListeningStatus();
+
+    const intervalId =
+      window.setInterval(
+        syncListeningStatus,
+        1500
+      );
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
     function applyAssistantEvent(event: AssistantEvent) {
       switch (event.type) {
         case "assistant.ready":
+          void syncAssistantStatus();
           void hideScreenOverlay();
           setAssistantUiState("idle");
           break;
 
         case "tts.finished":
+          setAssistantUiState("idle");
+          break;
+
         case "listening.enabled":
+          setIsListening(true);
           setAssistantUiState("idle");
           break;
 
         case "listening.disabled":
+          setIsListening(false);
           void hideScreenOverlay();
           setAssistantUiState("idle");
           break;

@@ -7,7 +7,6 @@ import SettingsButton from "../components/SettingsButton";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import ProfileModal from "../components/ProfileModal";
-import ListeningOverlay from "../components/ListeningOverlay";
 
 import {
   getAssistantStatus,
@@ -84,10 +83,8 @@ export default function MainScreen({
   const [assistantUiState, setAssistantUiState] =
     useState<AssistantUiState>("idle");
 
-  const [
-    isListeningOverlayActive,
-    setIsListeningOverlayActive,
-  ] = useState(false);
+  const [, setIsListeningOverlayActive] =
+    useState(false);
 
   const processedEventIdsRef =
     useRef<Set<string>>(new Set());
@@ -262,6 +259,7 @@ export default function MainScreen({
 
         case "ai.followup.timeout":
         case "ai.followup.skipped":
+        case "command.timeout":
           void hideScreenOverlay();
           setAssistantUiState("idle");
           break;
@@ -437,10 +435,6 @@ export default function MainScreen({
     >
       <CyberPsychoBackground
         isListening={isListening}
-      />
-
-      <ListeningOverlay
-        active={isListeningOverlayActive}
       />
 
       <div className="top-left">

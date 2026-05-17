@@ -121,10 +121,16 @@ fn fit_screen_overlay_to_primary_monitor(app: &AppHandle) -> Result<(), String> 
     let size = monitor.size();
 
     window
-        .set_position(PhysicalPosition::new(position.x, position.y))
+        .set_position(PhysicalPosition::new(
+            position.x - 8,
+            position.y - 8,
+        ))
         .map_err(|error| error.to_string())?;
     window
-        .set_size(PhysicalSize::new(size.width, size.height))
+        .set_size(PhysicalSize::new(
+            size.width + 16,
+            size.height + 16,
+        ))
         .map_err(|error| error.to_string())?;
 
     Ok(())

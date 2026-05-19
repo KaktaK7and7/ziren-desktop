@@ -143,13 +143,24 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "screen-overlay window not found".to_string())?;
 
     let _ = fit_screen_overlay_to_primary_monitor(&app);
+
     let _ = window.set_ignore_cursor_events(true);
     let _ = window.set_focusable(false);
+
+    // Форсим пересоздание topmost слоя Windows
+    let _ = window.hide();
+
+    std::thread::sleep(std::time::Duration::from_millis(16));
+
+    window
+        .show()
+        .map_err(|error| error.to_string())?;
+
+    let _ = window.unminimize();
 
     window
         .set_always_on_top(true)
         .map_err(|error| error.to_string())?;
-    window.show().map_err(|error| error.to_string())?;
 
     Ok(())
 }
@@ -157,7 +168,11 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn hide_listening_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("screen-overlay") {
-        window.hide().map_err(|error| error.to_string())?;
+        let _ = window.set_always_on_top(false);
+
+        window
+            .hide()
+            .map_err(|error| error.to_string())?;
     }
 
     Ok(())

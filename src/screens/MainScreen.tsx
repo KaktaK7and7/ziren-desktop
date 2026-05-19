@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
 import SettingsButton from "../components/SettingsButton";
+import SettingsModal from "../components/SettingsModal";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import ProfileModal from "../components/ProfileModal";
@@ -78,6 +79,9 @@ export default function MainScreen({
     useState(false);
 
   const [isProfileOpen, setIsProfileOpen] =
+    useState(false);
+
+  const [isSettingsOpen, setIsSettingsOpen] =
     useState(false);
 
   const [assistantUiState, setAssistantUiState] =
@@ -417,8 +421,9 @@ export default function MainScreen({
 
   function handleSettingsClick() {
     addGuiLog(
-      "[SETTINGS] Settings clicked"
+      "[SETTINGS] Settings opened"
     );
+    setIsSettingsOpen(true);
   }
 
   function handleProfileClick() {
@@ -510,6 +515,12 @@ export default function MainScreen({
         <ProfileModal
           onClose={() => setIsProfileOpen(false)}
           onLogout={onLogout}
+        />
+      )}
+
+      {isSettingsOpen && (
+        <SettingsModal
+          onClose={() => setIsSettingsOpen(false)}
         />
       )}
     </div>

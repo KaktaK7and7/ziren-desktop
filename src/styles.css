@@ -223,9 +223,13 @@ input {
   position: absolute;
   top: 18px;
   left: 18px;
+  z-index: 50;
+  pointer-events: auto;
 }
 
 .settings-button {
+  position: relative;
+  z-index: 51;
   width: 44px;
   height: 44px;
   border-radius: 15px;
@@ -234,6 +238,7 @@ input {
   color: #f5f7ff;
   background: rgba(7, 9, 15, 0.86);
   backdrop-filter: blur(14px);
+  pointer-events: auto;
   cursor: pointer;
   box-shadow: 0 0 18px rgba(0, 245, 255, 0.08);
 }
@@ -784,6 +789,7 @@ input {
   position: absolute;
   inset: 0;
   z-index: 2;
+  pointer-events: none;
 }
 
 .glitch-fragment {
@@ -1033,6 +1039,7 @@ input {
 .noise-layer {
   position: absolute;
   inset: 0;
+  pointer-events: none;
   opacity: 0.09;
   background:
     repeating-linear-gradient(

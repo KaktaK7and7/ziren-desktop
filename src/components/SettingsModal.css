@@ -305,6 +305,28 @@
   color: rgba(255, 225, 230, 0.78);
 }
 
+.settings-warning {
+  display: grid;
+  gap: 6px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 214, 102, 0.46);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(255, 214, 102, 0.12), transparent),
+    rgba(0, 0, 0, 0.3);
+  color: #ffe6a3;
+}
+
+.settings-warning strong {
+  color: #ffd666;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+}
+
+.settings-warning span {
+  color: rgba(255, 240, 196, 0.78);
+}
+
 .settings-feature-list {
   display: grid;
   gap: 14px;
@@ -399,9 +421,13 @@
 
 .settings-trigger-chip {
   max-width: 100%;
-  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 29px;
+  padding: 4px 5px 4px 9px;
   border: 1px solid rgba(0, 245, 255, 0.24);
-  border-radius: 3px;
+  border-radius: 2px;
   background:
     linear-gradient(90deg, rgba(0, 245, 255, 0.09), rgba(0, 245, 255, 0.025)),
     rgba(0, 0, 0, 0.26);
@@ -412,11 +438,128 @@
   overflow-wrap: anywhere;
 }
 
+.settings-trigger-chip > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings-trigger-chip button {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 77, 109, 0.4);
+  border-radius: 1px;
+  background: rgba(255, 77, 109, 0.08);
+  color: #ff9aac;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.settings-trigger-chip button:hover:not(:disabled) {
+  border-color: rgba(255, 77, 109, 0.88);
+  background: rgba(255, 77, 109, 0.16);
+  color: #ffdce3;
+}
+
+.settings-trigger-chip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .settings-empty-triggers {
   margin: 0;
   color: rgba(245, 247, 255, 0.48);
   font-size: 13px;
   letter-spacing: 0.04em;
+}
+
+.settings-inline-error {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 77, 109, 0.46);
+  border-radius: 2px;
+  background: rgba(255, 77, 109, 0.09);
+  color: #ffb4c0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.settings-trigger-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.settings-trigger-controls input {
+  min-width: 0;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid rgba(0, 245, 255, 0.26);
+  border-radius: 2px;
+  outline: none;
+  background:
+    linear-gradient(90deg, rgba(0, 245, 255, 0.07), transparent),
+    rgba(0, 0, 0, 0.34);
+  color: #efffff;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.018);
+}
+
+.settings-trigger-controls input::placeholder {
+  color: rgba(245, 247, 255, 0.36);
+}
+
+.settings-trigger-controls input:focus {
+  border-color: rgba(0, 245, 255, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 245, 255, 0.14),
+    0 0 18px rgba(0, 245, 255, 0.11);
+}
+
+.settings-trigger-controls button {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(0, 245, 255, 0.12), rgba(69, 255, 154, 0.055)),
+    rgba(0, 0, 0, 0.3);
+  color: #dffcff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-trigger-controls button:hover:not(:disabled) {
+  border-color: rgba(0, 245, 255, 0.78);
+  background:
+    linear-gradient(90deg, rgba(0, 245, 255, 0.2), rgba(69, 255, 154, 0.08)),
+    rgba(0, 0, 0, 0.36);
+  color: #ffffff;
+}
+
+.settings-trigger-controls input:disabled,
+.settings-trigger-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.settings-saving-label {
+  color: #9affc8;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 12px rgba(69, 255, 154, 0.28);
 }
 
 @media (max-width: 760px) {
@@ -457,5 +600,13 @@
 
   .settings-feature-top {
     flex-direction: column;
+  }
+
+  .settings-trigger-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-trigger-controls button {
+    width: 100%;
   }
 }

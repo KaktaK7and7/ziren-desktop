@@ -1,31 +1,52 @@
 const ASSISTANT_API_URL = "http://127.0.0.1:8787";
 
+export type FeatureTriggerGroup = {
+  action_id: string;
+  display_name: string;
+  triggers: string[];
+};
+
 export type FeatureTriggerInfo = {
   feature_id: string;
   display_name: string;
   plan: string;
-  triggers: string[];
+  triggers?: string[];
+  trigger_groups: FeatureTriggerGroup[];
 };
 
 export type FeatureTriggerDefaultsInfo = {
   feature_id: string;
-  default_triggers: string[];
+  display_name: string;
+  plan: string;
+  default_trigger_groups: FeatureTriggerGroup[];
+};
+
+type RawFeatureTriggerInfo = Omit<FeatureTriggerInfo, "trigger_groups"> & {
+  trigger_groups?: FeatureTriggerGroup[];
+};
+
+type RawFeatureTriggerDefaultsInfo = Omit<
+  FeatureTriggerDefaultsInfo,
+  "default_trigger_groups"
+> & {
+  default_trigger_groups?: FeatureTriggerGroup[];
+  default_triggers?: string[];
 };
 
 type FeatureTriggersResponse = {
-  features?: FeatureTriggerInfo[];
+  features?: RawFeatureTriggerInfo[];
 };
 
 type FeatureTriggerDefaultsResponse = {
-  defaults?: FeatureTriggerDefaultsInfo[];
-  features?: FeatureTriggerDefaultsInfo[];
+  defaults?: RawFeatureTriggerDefaultsInfo[];
+  features?: RawFeatureTriggerDefaultsInfo[];
 };
 
 type SaveFeatureTriggersResponse =
-  | FeatureTriggerInfo
+  | RawFeatureTriggerInfo
   | {
-      feature?: FeatureTriggerInfo;
-      features?: FeatureTriggerInfo[];
+      feature?: RawFeatureTriggerInfo;
+      features?: RawFeatureTriggerInfo[];
     };
 
 export async function fetchFeatureTriggers(): Promise<FeatureTriggerInfo[]> {
@@ -37,7 +58,7 @@ export async function fetchFeatureTriggers(): Promise<FeatureTriggerInfo[]> {
 
   const data = (await response.json()) as FeatureTriggersResponse;
 
-  return data.features ?? [];
+  return (data.features ?? []).map(normalizeFeature);
 }
 
 export async function fetchFeatureTriggerDefaults(): Promise<
@@ -51,19 +72,23 @@ export async function fetchFeatureTriggerDefaults(): Promise<
 
   const data = (await response.json()) as FeatureTriggerDefaultsResponse;
 
-  return data.defaults ?? data.features ?? [];
+  return (data.defaults ?? data.features ?? []).map(normalizeDefaults);
 }
 
 export async function saveFeatureTriggers(
   feature_id: string,
-  triggers: string[]
+  triggerGroups: FeatureTriggerGroup[]
 ): Promise<FeatureTriggerInfo> {
+  const trigger_groups = Object.fromEntries(
+    triggerGroups.map((group) => [group.action_id, group.triggers])
+  );
+
   const response = await fetch(`${ASSISTANT_API_URL}/features/triggers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ feature_id, triggers }),
+    body: JSON.stringify({ feature_id, trigger_groups }),
   });
 
   if (!response.ok) {
@@ -73,7 +98,7 @@ export async function saveFeatureTriggers(
   const data = (await response.json()) as SaveFeatureTriggersResponse;
 
   if ("feature" in data && data.feature) {
-    return data.feature;
+    return normalizeFeature(data.feature);
   }
 
   if ("features" in data && data.features) {
@@ -82,13 +107,51 @@ export async function saveFeatureTriggers(
     );
 
     if (updatedFeature) {
-      return updatedFeature;
+      return normalizeFeature(updatedFeature);
     }
   }
 
   if ("feature_id" in data) {
-    return data;
+    return normalizeFeature(data);
   }
 
   throw new Error("Backend вернул неожиданный ответ");
+}
+
+function normalizeFeature(feature: RawFeatureTriggerInfo): FeatureTriggerInfo {
+  const triggerGroups =
+    feature.trigger_groups && feature.trigger_groups.length > 0
+      ? feature.trigger_groups
+      : buildLegacyGroups(feature.triggers ?? []);
+
+  return {
+    ...feature,
+    trigger_groups: triggerGroups,
+  };
+}
+
+function normalizeDefaults(
+  feature: RawFeatureTriggerDefaultsInfo
+): FeatureTriggerDefaultsInfo {
+  const defaultTriggerGroups =
+    feature.default_trigger_groups && feature.default_trigger_groups.length > 0
+      ? feature.default_trigger_groups
+      : buildLegacyGroups(feature.default_triggers ?? []);
+
+  return {
+    feature_id: feature.feature_id,
+    display_name: feature.display_name,
+    plan: feature.plan,
+    default_trigger_groups: defaultTriggerGroups,
+  };
+}
+
+function buildLegacyGroups(triggers: string[]): FeatureTriggerGroup[] {
+  return [
+    {
+      action_id: "__legacy__",
+      display_name: "Общие триггеры",
+      triggers,
+    },
+  ];
 }

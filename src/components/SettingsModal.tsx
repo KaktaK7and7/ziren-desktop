@@ -5,6 +5,7 @@ import {
   fetchFeatureTriggers,
   saveFeatureTriggers,
   type FeatureTriggerDefaultsInfo,
+  type FeatureTriggerGroup,
   type FeatureTriggerInfo,
 } from "../services/featureTriggers";
 
@@ -19,6 +20,8 @@ type SettingsSection = {
   label: string;
   disabled?: boolean;
 };
+
+const LEGACY_ACTION_ID = "__legacy__";
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "triggers", label: "Триггеры" },
@@ -36,7 +39,8 @@ export default function SettingsModal({ onClose }: Props) {
   const [error, setError] = useState("");
   const [defaultsError, setDefaultsError] = useState("");
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
-  const [savingFeatureIds, setSavingFeatureIds] = useState<
+  const [savingKeys, setSavingKeys] = useState<Record<string, boolean>>({});
+  const [expandedFeatures, setExpandedFeatures] = useState<
     Record<string, boolean>
   >({});
   const [newTriggerValues, setNewTriggerValues] = useState<
@@ -48,7 +52,12 @@ export default function SettingsModal({ onClose }: Props) {
     return new Map(
       defaults.map((featureDefaults) => [
         featureDefaults.feature_id,
-        featureDefaults.default_triggers,
+        new Map(
+          featureDefaults.default_trigger_groups.map((group) => [
+            group.action_id,
+            group,
+          ])
+        ),
       ])
     );
   }, [defaults]);
@@ -123,6 +132,17 @@ export default function SettingsModal({ onClose }: Props) {
     event.stopPropagation();
   }
 
+  function actionKey(featureId: string, actionId: string) {
+    return `${featureId}:${actionId}`;
+  }
+
+  function toggleFeature(featureId: string) {
+    setExpandedFeatures((current) => ({
+      ...current,
+      [featureId]: !current[featureId],
+    }));
+  }
+
   function normalizeTriggers(triggers: string[]) {
     const normalizedTriggers = triggers
       .map((trigger) => trigger.trim().toLowerCase())
@@ -141,74 +161,130 @@ export default function SettingsModal({ onClose }: Props) {
     );
   }
 
-  async function persistFeatureTriggers(
+  function getDefaultGroup(featureId: string, actionId: string) {
+    return defaultsByFeatureId.get(featureId)?.get(actionId);
+  }
+
+  function isEditableAction(featureId: string, actionId: string) {
+    return actionId !== LEGACY_ACTION_ID && Boolean(getDefaultGroup(featureId, actionId));
+  }
+
+  function buildUpdatedGroups(
     feature: FeatureTriggerInfo,
+    actionId: string,
     triggers: string[]
   ) {
-    const featureId = feature.feature_id;
+    return feature.trigger_groups
+      .filter((group) => group.action_id !== LEGACY_ACTION_ID)
+      .map((group) =>
+        group.action_id === actionId
+          ? { ...group, triggers: normalizeTriggers(triggers) }
+          : group
+      );
+  }
 
-    setSavingFeatureIds((current) => ({ ...current, [featureId]: true }));
+  async function persistFeatureGroups(
+    feature: FeatureTriggerInfo,
+    groups: FeatureTriggerGroup[],
+    key: string
+  ) {
+    setSavingKeys((current) => ({ ...current, [key]: true }));
     setSaveErrors((current) => {
       const next = { ...current };
-      delete next[featureId];
+      delete next[key];
       return next;
     });
 
     try {
-      const updatedFeature = await saveFeatureTriggers(
-        featureId,
-        normalizeTriggers(triggers)
-      );
-
+      const updatedFeature = await saveFeatureTriggers(feature.feature_id, groups);
       updateFeature(updatedFeature);
       return true;
     } catch (err) {
       setSaveErrors((current) => ({
         ...current,
-        [featureId]:
+        [key]:
           err instanceof Error
             ? err.message
             : "Не удалось сохранить изменения",
       }));
       return false;
     } finally {
-      setSavingFeatureIds((current) => ({ ...current, [featureId]: false }));
+      setSavingKeys((current) => ({ ...current, [key]: false }));
     }
   }
 
-  async function handleRemoveTrigger(feature: FeatureTriggerInfo, trigger: string) {
-    await persistFeatureTriggers(
+  async function handleRemoveTrigger(
+    feature: FeatureTriggerInfo,
+    group: FeatureTriggerGroup,
+    trigger: string
+  ) {
+    const key = actionKey(feature.feature_id, group.action_id);
+
+    await persistFeatureGroups(
       feature,
-      feature.triggers.filter((item) => item !== trigger)
+      buildUpdatedGroups(
+        feature,
+        group.action_id,
+        group.triggers.filter((item) => item !== trigger)
+      ),
+      key
     );
   }
 
-  async function handleAddTrigger(feature: FeatureTriggerInfo) {
-    const featureId = feature.feature_id;
-    const newTrigger = (newTriggerValues[featureId] ?? "").trim().toLowerCase();
+  async function handleAddTrigger(
+    feature: FeatureTriggerInfo,
+    group: FeatureTriggerGroup
+  ) {
+    const key = actionKey(feature.feature_id, group.action_id);
+    const newTrigger = (newTriggerValues[key] ?? "").trim().toLowerCase();
 
     if (!newTrigger) {
       return;
     }
 
-    const saved = await persistFeatureTriggers(feature, [
-      ...feature.triggers,
-      newTrigger,
-    ]);
+    const saved = await persistFeatureGroups(
+      feature,
+      buildUpdatedGroups(feature, group.action_id, [...group.triggers, newTrigger]),
+      key
+    );
 
     if (saved) {
-      setNewTriggerValues((current) => ({ ...current, [featureId]: "" }));
+      setNewTriggerValues((current) => ({ ...current, [key]: "" }));
     }
   }
 
-  async function handleResetFeature(feature: FeatureTriggerInfo) {
-    const defaultTriggers = defaultsByFeatureId.get(feature.feature_id);
+  async function handleResetGroup(
+    feature: FeatureTriggerInfo,
+    group: FeatureTriggerGroup
+  ) {
+    const defaultGroup = getDefaultGroup(feature.feature_id, group.action_id);
 
-    if (!defaultTriggers) {
+    if (!defaultGroup) {
       return;
     }
 
-    await persistFeatureTriggers(feature, defaultTriggers);
+    await persistFeatureGroups(
+      feature,
+      buildUpdatedGroups(feature, group.action_id, defaultGroup.triggers),
+      actionKey(feature.feature_id, group.action_id)
+    );
+  }
+
+  async function handleResetFeature(feature: FeatureTriggerInfo) {
+    const defaultGroups = defaultsByFeatureId.get(feature.feature_id);
+
+    if (!defaultGroups) {
+      return;
+    }
+
+    await persistFeatureGroups(
+      feature,
+      Array.from(defaultGroups.values()).map((group) => ({
+        ...group,
+        triggers: normalizeTriggers(group.triggers),
+      })),
+      feature.feature_id
+    );
   }
 
   return (
@@ -305,89 +381,152 @@ export default function SettingsModal({ onClose }: Props) {
                         <span>{feature.feature_id}</span>
                       </div>
 
-                      <strong>{feature.plan}</strong>
+                      <div className="settings-feature-actions">
+                        <strong>{feature.plan}</strong>
+                        <button
+                          type="button"
+                          className="settings-expand-button"
+                          onClick={() => toggleFeature(feature.feature_id)}
+                        >
+                          {expandedFeatures[feature.feature_id]
+                            ? "Свернуть"
+                            : "Развернуть"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            savingKeys[feature.feature_id] ||
+                            !defaultsByFeatureId.has(feature.feature_id)
+                          }
+                          onClick={() => handleResetFeature(feature)}
+                        >
+                          Сбросить всю функцию
+                        </button>
+                      </div>
                     </div>
 
                     <div className="settings-feature-divider" />
 
-                    <div className="settings-trigger-list">
-                      {feature.triggers.length > 0 ? (
-                        feature.triggers.map((trigger, index) => (
-                          <span
-                            className="settings-trigger-chip"
-                            key={`${trigger}-${index}`}
+                    {expandedFeatures[feature.feature_id] && (
+                      <div className="settings-action-group-list">
+                        {feature.trigger_groups.map((group) => {
+                        const key = actionKey(feature.feature_id, group.action_id);
+                        const isSaving =
+                          savingKeys[key] || savingKeys[feature.feature_id];
+                        const isEditable = isEditableAction(
+                          feature.feature_id,
+                          group.action_id
+                        );
+
+                        return (
+                          <section
+                            className="settings-action-group"
+                            key={group.action_id}
                           >
-                            <span>{trigger}</span>
-                            <button
-                              type="button"
-                              aria-label={`Удалить триггер ${trigger}`}
-                              disabled={savingFeatureIds[feature.feature_id]}
-                              onClick={() =>
-                                handleRemoveTrigger(feature, trigger)
-                              }
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))
-                      ) : (
-                        <p className="settings-empty-triggers">
-                          Триггеры не заданы
-                        </p>
-                      )}
-                    </div>
+                            <div className="settings-action-group-header">
+                              <div>
+                                <h5>{group.display_name}</h5>
+                                <span>{group.action_id}</span>
+                              </div>
+
+                              {group.action_id === LEGACY_ACTION_ID && (
+                                <strong>LEGACY</strong>
+                              )}
+                            </div>
+
+                            <div className="settings-trigger-list">
+                              {group.triggers.length > 0 ? (
+                                group.triggers.map((trigger, index) => (
+                                  <span
+                                    className="settings-trigger-chip"
+                                    key={`${trigger}-${index}`}
+                                  >
+                                    <span>{trigger}</span>
+                                    <button
+                                      type="button"
+                                      aria-label={`Удалить триггер ${trigger}`}
+                                      disabled={isSaving || !isEditable}
+                                      onClick={() =>
+                                        handleRemoveTrigger(
+                                          feature,
+                                          group,
+                                          trigger
+                                        )
+                                      }
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))
+                              ) : (
+                                <p className="settings-empty-triggers">
+                                  Триггеры не заданы
+                                </p>
+                              )}
+                            </div>
+
+                            {saveErrors[key] && (
+                              <div className="settings-inline-error">
+                                {saveErrors[key]}
+                              </div>
+                            )}
+
+                            <div className="settings-trigger-controls">
+                              <input
+                                type="text"
+                                placeholder="Новый триггер"
+                                value={newTriggerValues[key] ?? ""}
+                                disabled={isSaving || !isEditable}
+                                onChange={(event) =>
+                                  setNewTriggerValues((current) => ({
+                                    ...current,
+                                    [key]: event.target.value,
+                                  }))
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    void handleAddTrigger(feature, group);
+                                  }
+                                }}
+                              />
+
+                              <button
+                                type="button"
+                                disabled={
+                                  isSaving ||
+                                  !isEditable ||
+                                  !(newTriggerValues[key] ?? "").trim()
+                                }
+                                onClick={() => handleAddTrigger(feature, group)}
+                              >
+                                + добавить
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isSaving || !isEditable}
+                                onClick={() => handleResetGroup(feature, group)}
+                              >
+                                Сбросить
+                              </button>
+
+                              {isSaving && (
+                                <span className="settings-saving-label">
+                                  SAVING...
+                                </span>
+                              )}
+                            </div>
+                          </section>
+                        );
+                        })}
+                      </div>
+                    )}
 
                     {saveErrors[feature.feature_id] && (
                       <div className="settings-inline-error">
                         {saveErrors[feature.feature_id]}
                       </div>
                     )}
-
-                    <div className="settings-trigger-controls">
-                      <input
-                        type="text"
-                        placeholder="Новый триггер"
-                        value={newTriggerValues[feature.feature_id] ?? ""}
-                        disabled={savingFeatureIds[feature.feature_id]}
-                        onChange={(event) =>
-                          setNewTriggerValues((current) => ({
-                            ...current,
-                            [feature.feature_id]: event.target.value,
-                          }))
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            void handleAddTrigger(feature);
-                          }
-                        }}
-                      />
-
-                      <button
-                        type="button"
-                        disabled={
-                          savingFeatureIds[feature.feature_id] ||
-                          !(newTriggerValues[feature.feature_id] ?? "").trim()
-                        }
-                        onClick={() => handleAddTrigger(feature)}
-                      >
-                        + добавить
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={
-                          savingFeatureIds[feature.feature_id] ||
-                          !defaultsByFeatureId.has(feature.feature_id)
-                        }
-                        onClick={() => handleResetFeature(feature)}
-                      >
-                        Сбросить к дефолту
-                      </button>
-
-                      {savingFeatureIds[feature.feature_id] && (
-                        <span className="settings-saving-label">SAVING...</span>
-                      )}
-                    </div>
                   </article>
                 ))}
               </div>

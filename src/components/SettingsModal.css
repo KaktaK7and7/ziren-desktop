@@ -785,6 +785,10 @@
   letter-spacing: 0.02em;
 }
 
+.settings-field-warning {
+  color: #ffe6a3;
+}
+
 .settings-steamdb-link {
   width: fit-content;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 
 import {
   fetchFeatureTriggerDefaults,
@@ -92,6 +93,7 @@ export default function SettingsModal({
   const [apps, setApps] = useState<AppLauncherTarget[]>([]);
   const [appsError, setAppsError] = useState("");
   const [appSaveError, setAppSaveError] = useState("");
+  const [appPickError, setAppPickError] = useState("");
   const [expandedApps, setExpandedApps] = useState<Record<string, boolean>>({});
   const [newAliasValues, setNewAliasValues] = useState<Record<string, string>>({});
   const [editingAppId, setEditingAppId] = useState<string | null>(null);
@@ -242,6 +244,7 @@ export default function SettingsModal({
   function beginCreateApp(alias = "") {
     setEditingAppId("__new__");
     setAppSaveError("");
+    setAppPickError("");
     setAppForm({
       ...emptyAppForm,
       aliases: alias ? [alias] : [],
@@ -251,6 +254,7 @@ export default function SettingsModal({
   function beginEditApp(app: AppLauncherTarget) {
     setEditingAppId(app.target_id);
     setAppSaveError("");
+    setAppPickError("");
     setExpandedApps((current) => ({ ...current, [app.target_id]: true }));
     setAppForm({ ...app, aliases: [...app.aliases] });
   }
@@ -258,11 +262,18 @@ export default function SettingsModal({
   function cancelEditApp() {
     setEditingAppId(null);
     setAppSaveError("");
+    setAppPickError("");
     setAppForm({ ...emptyAppForm, aliases: [] });
   }
 
   async function handleSaveApp() {
     const aliases = normalizeAppAliases(appForm.aliases);
+    const validationError = validateAppForm();
+
+    if (validationError) {
+      setAppSaveError(validationError);
+      return;
+    }
 
     try {
       setAppSaveError("");
@@ -324,6 +335,11 @@ export default function SettingsModal({
     setAppForm((current) => ({ ...current, [field]: value }));
   }
 
+  function updateAppPath(value: string) {
+    setAppPickError("");
+    updateAppForm("path", value);
+  }
+
   function updateAppFormAliases(value: string) {
     setAppForm((current) => ({
       ...current,
@@ -350,6 +366,8 @@ export default function SettingsModal({
   }
 
   function updateAppType(type: AppLaunchType) {
+    setAppPickError("");
+    setAppSaveError("");
     setAppForm((current) => ({
       ...current,
       type,
@@ -357,6 +375,59 @@ export default function SettingsModal({
       appid: type === "steam" ? current.appid : "",
       launch_uri: "",
     }));
+  }
+
+  function selectedFileNameWithoutExtension(path: string) {
+    const fileName = path.split(/[\\/]/).pop() ?? "";
+    return fileName.replace(/\.[^.]+$/, "");
+  }
+
+  async function handlePickFile(type: "exe" | "shortcut") {
+    try {
+      setAppPickError("");
+      const selected = await open({
+        multiple: false,
+        filters: [
+          type === "exe"
+            ? { name: "Executable", extensions: ["exe"] }
+            : { name: "Shortcut", extensions: ["lnk"] },
+        ],
+      });
+
+      if (typeof selected !== "string") {
+        return;
+      }
+
+      setAppForm((current) => ({
+        ...current,
+        path: selected,
+        name: current.name.trim()
+          ? current.name
+          : selectedFileNameWithoutExtension(selected),
+      }));
+    } catch (err) {
+      console.error("Failed to open file dialog", err);
+      setAppPickError("Не удалось открыть выбор файла. Вставь путь вручную.");
+    }
+  }
+
+  function validateAppForm() {
+    const appType = getAppType(appForm.type);
+    const path = (appForm.path ?? "").trim();
+
+    if (appType === "exe") {
+      return path && path.toLowerCase().endsWith(".exe")
+        ? ""
+        : "Выбери .exe файл или вставь полный путь к .exe вручную.";
+    }
+
+    if (appType === "shortcut") {
+      return path && path.toLowerCase().endsWith(".lnk")
+        ? ""
+        : "Выбери ярлык .lnk или вставь полный путь к .lnk вручную.";
+    }
+
+    return "";
   }
 
   function renderAppForm() {
@@ -417,17 +488,25 @@ export default function SettingsModal({
                         ? "C:\\Games\\Game\\Game.exe"
                         : "C:\\Users\\User\\Desktop\\Game.lnk"
                   }
-                  onChange={(event) => updateAppForm("path", event.target.value)}
+                  onChange={(event) => updateAppPath(event.target.value)}
                 />
                 {showPath && (
-                  <button type="button" disabled title="Tauri dialog plugin не подключен">
+                  <button
+                    type="button"
+                    onClick={() => void handlePickFile(appType)}
+                  >
                     Выбрать файл
                   </button>
                 )}
               </div>
+              {appPickError && (
+                <span className="settings-field-hint settings-field-warning">
+                  {appPickError}
+                </span>
+              )}
               {showPath && (
                 <span className="settings-field-hint">
-                  Выбор через проводник станет доступен после подключения Tauri dialog plugin.
+                  Можно выбрать файл или вставить путь вручную.
                 </span>
               )}
             </label>

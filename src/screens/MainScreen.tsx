@@ -84,6 +84,15 @@ export default function MainScreen({
   const [isSettingsOpen, setIsSettingsOpen] =
     useState(false);
 
+  const [settingsInitialSection, setSettingsInitialSection] =
+    useState("triggers");
+
+  const [settingsInitialAppAlias, setSettingsInitialAppAlias] =
+    useState("");
+
+  const [settingsInitialAppRequestId, setSettingsInitialAppRequestId] =
+    useState(0);
+
   const [assistantUiState, setAssistantUiState] =
     useState<AssistantUiState>("idle");
 
@@ -314,6 +323,20 @@ export default function MainScreen({
           void hideScreenOverlay();
           setAssistantUiState("speaking");
           break;
+
+        case "app.launcher.not_found": {
+          const query =
+            typeof event.payload.query === "string"
+              ? event.payload.query
+              : "";
+
+          setSettingsInitialSection("apps");
+          setSettingsInitialAppAlias(query);
+          setSettingsInitialAppRequestId((current) => current + 1);
+          setIsSettingsOpen(true);
+          addGuiLog("[APP LAUNCHER] Add missing app alias");
+          break;
+        }
       }
     }
 
@@ -423,6 +446,9 @@ export default function MainScreen({
     addGuiLog(
       "[SETTINGS] Settings opened"
     );
+    setSettingsInitialSection("triggers");
+    setSettingsInitialAppAlias("");
+    setSettingsInitialAppRequestId((current) => current + 1);
     setIsSettingsOpen(true);
   }
 
@@ -520,6 +546,9 @@ export default function MainScreen({
 
       {isSettingsOpen && (
         <SettingsModal
+          initialSection={settingsInitialSection}
+          initialAppAlias={settingsInitialAppAlias}
+          initialAppRequestId={settingsInitialAppRequestId}
           onClose={() => setIsSettingsOpen(false)}
         />
       )}

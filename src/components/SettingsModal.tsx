@@ -8,12 +8,26 @@ import {
   type FeatureTriggerGroup,
   type FeatureTriggerInfo,
 } from "../services/featureTriggers";
+import {
+  addAppLauncherAlias,
+  cleanupAppLauncherApps,
+  deleteAppLauncherAlias,
+  deleteAppLauncherApp,
+  fetchAppLauncherApps,
+  saveAppLauncherApp,
+  type AppLauncherTarget,
+} from "../services/appLauncherApps";
 
 import "./SettingsModal.css";
 
 type Props = {
   onClose: () => void;
+  initialSection?: string;
+  initialAppAlias?: string;
+  initialAppRequestId?: number;
 };
+
+type AppLaunchType = "exe" | "shortcut" | "steam" | "system";
 
 type SettingsSection = {
   id: string;
@@ -24,6 +38,7 @@ type SettingsSection = {
 const LEGACY_ACTION_ID = "__legacy__";
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
+  { id: "apps", label: "Приложения" },
   { id: "triggers", label: "Триггеры" },
   { id: "voice", label: "Голос", disabled: true },
   { id: "interface", label: "Интерфейс", disabled: true },
@@ -32,7 +47,34 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "system", label: "Система", disabled: true },
 ];
 
-export default function SettingsModal({ onClose }: Props) {
+const emptyAppForm: AppLauncherTarget = {
+  target_id: "",
+  name: "",
+  type: "exe",
+  source: "manual",
+  launch_uri: "",
+  path: "",
+  appid: "",
+  spoken_name: "",
+  aliases: [],
+};
+
+const APP_TYPE_HELP: Record<AppLaunchType, string> = {
+  exe: "Обычная программа или игра. Выберите файл .exe, который запускает приложение.",
+  shortcut:
+    "Ярлык Windows. Лучше выбирать, если игра запускается через ярлык на рабочем столе или в меню Пуск.",
+  steam:
+    "Игра Steam. Укажите Steam AppID. Игры Steam лучше запускать через Steam, а не напрямую через .exe.",
+  system:
+    "Системная команда Windows. Например explorer.exe, notepad.exe, calc.exe.",
+};
+
+export default function SettingsModal({
+  onClose,
+  initialSection = "triggers",
+  initialAppAlias = "",
+  initialAppRequestId = 0,
+}: Props) {
   const [features, setFeatures] = useState<FeatureTriggerInfo[]>([]);
   const [defaults, setDefaults] = useState<FeatureTriggerDefaultsInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +88,17 @@ export default function SettingsModal({ onClose }: Props) {
   const [newTriggerValues, setNewTriggerValues] = useState<
     Record<string, string>
   >({});
-  const [activeSection, setActiveSection] = useState("triggers");
+  const [activeSection, setActiveSection] = useState(initialSection);
+  const [apps, setApps] = useState<AppLauncherTarget[]>([]);
+  const [appsError, setAppsError] = useState("");
+  const [appSaveError, setAppSaveError] = useState("");
+  const [expandedApps, setExpandedApps] = useState<Record<string, boolean>>({});
+  const [newAliasValues, setNewAliasValues] = useState<Record<string, string>>({});
+  const [editingAppId, setEditingAppId] = useState<string | null>(null);
+  const [appForm, setAppForm] = useState<AppLauncherTarget>({
+    ...emptyAppForm,
+    aliases: initialAppAlias ? [initialAppAlias] : [],
+  });
 
   const defaultsByFeatureId = useMemo(() => {
     return new Map(
@@ -128,6 +180,43 @@ export default function SettingsModal({ onClose }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    setActiveSection(initialSection);
+
+    if (initialSection === "apps" && initialAppAlias) {
+      setEditingAppId("__new__");
+      setAppForm({
+        ...emptyAppForm,
+        aliases: [initialAppAlias],
+      });
+    }
+  }, [initialSection, initialAppAlias, initialAppRequestId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadApps() {
+      try {
+        const loadedApps = await fetchAppLauncherApps();
+
+        if (mounted) {
+          setApps(loadedApps);
+          setAppsError("");
+        }
+      } catch (err) {
+        if (mounted) {
+          setAppsError(err instanceof Error ? err.message : "Failed to load apps");
+        }
+      }
+    }
+
+    void loadApps();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   function handlePanelClick(event: MouseEvent<HTMLDivElement>) {
     event.stopPropagation();
   }
@@ -141,6 +230,243 @@ export default function SettingsModal({ onClose }: Props) {
       ...current,
       [featureId]: !current[featureId],
     }));
+  }
+
+  function toggleApp(targetId: string) {
+    setExpandedApps((current) => ({
+      ...current,
+      [targetId]: !current[targetId],
+    }));
+  }
+
+  function beginCreateApp(alias = "") {
+    setEditingAppId("__new__");
+    setAppSaveError("");
+    setAppForm({
+      ...emptyAppForm,
+      aliases: alias ? [alias] : [],
+    });
+  }
+
+  function beginEditApp(app: AppLauncherTarget) {
+    setEditingAppId(app.target_id);
+    setAppSaveError("");
+    setExpandedApps((current) => ({ ...current, [app.target_id]: true }));
+    setAppForm({ ...app, aliases: [...app.aliases] });
+  }
+
+  function cancelEditApp() {
+    setEditingAppId(null);
+    setAppSaveError("");
+    setAppForm({ ...emptyAppForm, aliases: [] });
+  }
+
+  async function handleSaveApp() {
+    const aliases = normalizeAppAliases(appForm.aliases);
+
+    try {
+      setAppSaveError("");
+      const savedApps = await saveAppLauncherApp({
+        target_id: appForm.target_id,
+        name: appForm.name.trim(),
+        type: appForm.type,
+        source: "manual",
+        path:
+          appForm.type === "exe" ||
+          appForm.type === "shortcut" ||
+          appForm.type === "system"
+            ? appForm.path?.trim() ?? ""
+            : "",
+        appid: appForm.type === "steam" ? appForm.appid?.trim() ?? "" : "",
+        spoken_name: appForm.spoken_name?.trim() ?? "",
+        aliases,
+      });
+      setApps(savedApps);
+      cancelEditApp();
+    } catch (err) {
+      setAppSaveError(
+        err instanceof Error ? err.message : "Не удалось сохранить приложение"
+      );
+    }
+  }
+
+  async function handleDeleteApp(targetId: string) {
+    setApps(await deleteAppLauncherApp(targetId));
+  }
+
+  async function handleCleanupApps() {
+    try {
+      setApps(await cleanupAppLauncherApps());
+      setAppsError("");
+    } catch (err) {
+      setAppsError(
+        err instanceof Error ? err.message : "Не удалось очистить дубли"
+      );
+    }
+  }
+
+  async function handleAddAlias(targetId: string) {
+    const alias = (newAliasValues[targetId] ?? "").trim();
+
+    if (!alias) {
+      return;
+    }
+
+    setApps(await addAppLauncherAlias(alias, targetId));
+    setNewAliasValues((current) => ({ ...current, [targetId]: "" }));
+  }
+
+  async function handleDeleteAlias(alias: string) {
+    setApps(await deleteAppLauncherAlias(alias));
+  }
+
+  function updateAppForm(field: keyof AppLauncherTarget, value: string) {
+    setAppForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateAppFormAliases(value: string) {
+    setAppForm((current) => ({
+      ...current,
+      aliases: value.split("\n"),
+    }));
+  }
+
+  function normalizeAppAliases(aliases: string[]) {
+    return Array.from(
+      new Set(aliases.map((alias) => alias.trim().toLowerCase()).filter(Boolean))
+    );
+  }
+
+  function getAppType(value: string): AppLaunchType {
+    return value === "shortcut" || value === "steam" || value === "system"
+      ? value
+      : "exe";
+  }
+
+  function appPrimaryFieldLabel(type: string) {
+    if (type === "steam") return "Steam AppID";
+    if (type === "system") return "System command";
+    return "Path";
+  }
+
+  function updateAppType(type: AppLaunchType) {
+    setAppForm((current) => ({
+      ...current,
+      type,
+      path: type === "steam" ? "" : current.path,
+      appid: type === "steam" ? current.appid : "",
+      launch_uri: "",
+    }));
+  }
+
+  function renderAppForm() {
+    const appType = getAppType(appForm.type);
+    const showPath = appType === "exe" || appType === "shortcut";
+    const showAppId = appType === "steam";
+    const showSystem = appType === "system";
+
+    return (
+      <>
+        {appSaveError && (
+          <div className="settings-inline-error">{appSaveError}</div>
+        )}
+
+        <div className="settings-app-form">
+          <label>
+            Название приложения
+            <input
+              value={appForm.name}
+              onChange={(event) => updateAppForm("name", event.target.value)}
+            />
+          </label>
+          <label>
+            Произносить как
+            <input
+              value={appForm.spoken_name ?? ""}
+              onChange={(event) =>
+                updateAppForm("spoken_name", event.target.value)
+              }
+            />
+          </label>
+          <label className="settings-app-form-wide">
+            Тип запуска
+            <select
+              value={appType}
+              onChange={(event) => updateAppType(getAppType(event.target.value))}
+            >
+              <option value="exe">EXE</option>
+              <option value="shortcut">SHORTCUT</option>
+              <option value="steam">STEAM</option>
+              <option value="system">SYSTEM</option>
+            </select>
+          </label>
+          <div className="settings-app-type-help settings-app-form-wide">
+            {APP_TYPE_HELP[appType]}
+          </div>
+
+          {(showPath || showSystem) && (
+            <label className="settings-app-form-wide">
+              {appPrimaryFieldLabel(appType)}
+              <div className="settings-file-row">
+                <input
+                  value={appForm.path ?? ""}
+                  placeholder={
+                    showSystem
+                      ? "explorer.exe, notepad.exe, calc.exe"
+                      : appType === "exe"
+                        ? "C:\\Games\\Game\\Game.exe"
+                        : "C:\\Users\\User\\Desktop\\Game.lnk"
+                  }
+                  onChange={(event) => updateAppForm("path", event.target.value)}
+                />
+                {showPath && (
+                  <button type="button" disabled title="Tauri dialog plugin не подключен">
+                    Выбрать файл
+                  </button>
+                )}
+              </div>
+              {showPath && (
+                <span className="settings-field-hint">
+                  Выбор через проводник станет доступен после подключения Tauri dialog plugin.
+                </span>
+              )}
+            </label>
+          )}
+
+          {showAppId && (
+            <label className="settings-app-form-wide">
+              Steam AppID
+              <input
+                value={appForm.appid ?? ""}
+                inputMode="numeric"
+                placeholder="Например 228380"
+                onChange={(event) => updateAppForm("appid", event.target.value)}
+              />
+            </label>
+          )}
+
+          {showAppId && (
+            <a
+              className="settings-steamdb-link settings-app-form-wide"
+              href="https://steamdb.info/apps/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Найти Steam AppID на SteamDB
+            </a>
+          )}
+
+          <label className="settings-app-form-wide">
+            Aliases
+            <textarea
+              value={appForm.aliases.join("\n")}
+              placeholder="По одному alias на строку"
+              onChange={(event) => updateAppFormAliases(event.target.value)}
+            />
+          </label>
+        </div>
+      </>
+    );
   }
 
   function normalizeTriggers(triggers: string[]) {
@@ -287,8 +613,20 @@ export default function SettingsModal({ onClose }: Props) {
     );
   }
 
+  function activeSectionTitle() {
+    if (activeSection === "triggers") {
+      return "Триггеры функций";
+    }
+
+    if (activeSection === "apps") {
+      return "Приложения";
+    }
+
+    return "Раздел недоступен";
+  }
+
   return (
-    <div className="settings-modal-overlay" onClick={onClose}>
+    <div className="settings-modal-overlay">
       <div className="settings-modal-shell" onClick={handlePanelClick}>
         <aside className="settings-sidebar">
           <div className="settings-brand">
@@ -321,7 +659,7 @@ export default function SettingsModal({ onClose }: Props) {
           </div>
         </aside>
 
-        <section className="settings-content-panel">
+        <section className="settings-content-panel" aria-label={activeSectionTitle()}>
           <button
             className="settings-modal-close"
             type="button"
@@ -337,7 +675,9 @@ export default function SettingsModal({ onClose }: Props) {
               <h2>
                 {activeSection === "triggers"
                   ? "Триггеры функций"
-                  : "Раздел недоступен"}
+                  : activeSection === "apps"
+                    ? "Приложения"
+                    : "Раздел недоступен"}
               </h2>
             </div>
 
@@ -526,6 +866,147 @@ export default function SettingsModal({ onClose }: Props) {
                       <div className="settings-inline-error">
                         {saveErrors[feature.feature_id]}
                       </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {activeSection === "apps" && (
+              <div className="settings-feature-list">
+                {appsError && (
+                  <div className="settings-warning">
+                    <strong>APPS ERROR</strong>
+                    <span>{appsError}</span>
+                  </div>
+                )}
+
+                <div className="settings-app-toolbar">
+                  <button
+                    type="button"
+                    className="settings-expand-button"
+                    onClick={() => beginCreateApp(initialAppAlias)}
+                  >
+                    Добавить приложение
+                  </button>
+                  <button
+                    type="button"
+                    className="settings-expand-button"
+                    onClick={() => void handleCleanupApps()}
+                  >
+                    Очистить дубли
+                  </button>
+                </div>
+
+                {editingAppId === "__new__" && (
+                  <article className="settings-feature-card">
+                    <div className="settings-feature-top">
+                      <div>
+                        <h4>Новое приложение</h4>
+                        <span>Выберите тип запуска и заполните нужные поля</span>
+                      </div>
+                    </div>
+
+                    {renderAppForm()}
+
+                    <div className="settings-trigger-controls">
+                      <button type="button" onClick={() => void handleSaveApp()}>
+                        Сохранить
+                      </button>
+                      <button type="button" onClick={cancelEditApp}>
+                        Отмена
+                      </button>
+                    </div>
+                  </article>
+                )}
+
+                {apps.map((app) => (
+                  <article className="settings-feature-card" key={app.target_id}>
+                    <div className="settings-feature-top">
+                      <div>
+                        <h4>{app.name}</h4>
+                        <span>
+                          aliases: {app.aliases.length}
+                        </span>
+                      </div>
+                      <div className="settings-feature-actions">
+                        <strong>{app.type}</strong>
+                        <strong>{app.source || app.type}</strong>
+                        <button
+                          type="button"
+                          className="settings-expand-button"
+                          onClick={() => toggleApp(app.target_id)}
+                        >
+                          {expandedApps[app.target_id] ? "Свернуть" : "Развернуть"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteApp(app.target_id)}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+
+                    {expandedApps[app.target_id] && (
+                      <>
+                        <div className="settings-feature-divider" />
+                        <div className="settings-app-meta">
+                          <span>{app.spoken_name || "Произношение не задано"}</span>
+                          <span>{app.path || app.launch_uri || app.appid || ""}</span>
+                        </div>
+                        <div className="settings-trigger-list">
+                          {app.aliases.map((alias) => (
+                            <span className="settings-trigger-chip" key={alias}>
+                              <span>{alias}</span>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteAlias(alias)}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        {editingAppId === app.target_id ? (
+                          <>
+                            {renderAppForm()}
+                            <div className="settings-trigger-controls">
+                              <button
+                                type="button"
+                                onClick={() => void handleSaveApp()}
+                              >
+                                Сохранить
+                              </button>
+                              <button type="button" onClick={cancelEditApp}>
+                                Отмена
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="settings-trigger-controls">
+                            <input
+                              value={newAliasValues[app.target_id] ?? ""}
+                              placeholder="Новый alias"
+                              onChange={(event) =>
+                                setNewAliasValues((current) => ({
+                                  ...current,
+                                  [app.target_id]: event.target.value,
+                                }))
+                              }
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleAddAlias(app.target_id)}
+                            >
+                              Добавить alias
+                            </button>
+                            <button type="button" onClick={() => beginEditApp(app)}>
+                              Редактировать
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </article>
                 ))}

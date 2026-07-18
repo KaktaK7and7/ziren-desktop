@@ -18,6 +18,13 @@ import {
   saveAppLauncherApp,
   type AppLauncherTarget,
 } from "../services/appLauncherApps";
+import {
+  deleteMediaPreset,
+  fetchMediaPresets,
+  saveMediaPreset,
+  testMediaPreset,
+  type MusicPreset,
+} from "../services/mediaPresets";
 
 import "./SettingsModal.css";
 
@@ -40,6 +47,7 @@ const LEGACY_ACTION_ID = "__legacy__";
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "apps", label: "Приложения" },
+  { id: "music", label: "Музыка" },
   { id: "triggers", label: "Триггеры" },
   { id: "voice", label: "Голос", disabled: true },
   { id: "interface", label: "Интерфейс", disabled: true },
@@ -58,6 +66,14 @@ const emptyAppForm: AppLauncherTarget = {
   appid: "",
   spoken_name: "",
   aliases: [],
+};
+
+const emptyMusicPresetForm: MusicPreset = {
+  preset_id: "",
+  name: "",
+  url: "",
+  aliases: [],
+  enabled: true,
 };
 
 const APP_TYPE_HELP: Record<AppLaunchType, string> = {
@@ -101,6 +117,17 @@ export default function SettingsModal({
     ...emptyAppForm,
     aliases: initialAppAlias ? [initialAppAlias] : [],
   });
+  const [musicPresets, setMusicPresets] = useState<MusicPreset[]>([]);
+  const [musicError, setMusicError] = useState("");
+  const [musicSaveError, setMusicSaveError] = useState("");
+  const [editingMusicPresetId, setEditingMusicPresetId] = useState<string | null>(
+    null
+  );
+  const [musicPresetForm, setMusicPresetForm] = useState<MusicPreset>({
+    ...emptyMusicPresetForm,
+    aliases: [],
+  });
+  const [musicAliasInput, setMusicAliasInput] = useState("");
 
   const defaultsByFeatureId = useMemo(() => {
     return new Map(
@@ -213,6 +240,33 @@ export default function SettingsModal({
     }
 
     void loadApps();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadMusicPresets() {
+      try {
+        const loadedPresets = await fetchMediaPresets();
+
+        if (mounted) {
+          setMusicPresets(loadedPresets);
+          setMusicError("");
+        }
+      } catch (err) {
+        if (mounted) {
+          setMusicError(
+            err instanceof Error ? err.message : "Failed to load music presets"
+          );
+        }
+      }
+    }
+
+    void loadMusicPresets();
 
     return () => {
       mounted = false;
@@ -428,6 +482,267 @@ export default function SettingsModal({
     }
 
     return "";
+  }
+
+  function beginCreateMusicPreset() {
+    setEditingMusicPresetId("__new__");
+    setMusicSaveError("");
+    setMusicAliasInput("");
+    setMusicPresetForm({ ...emptyMusicPresetForm, aliases: [] });
+  }
+
+  function beginEditMusicPreset(preset: MusicPreset) {
+    setEditingMusicPresetId(preset.preset_id);
+    setMusicSaveError("");
+    setMusicAliasInput("");
+    setMusicPresetForm({ ...preset, aliases: [...preset.aliases] });
+  }
+
+  function cancelEditMusicPreset() {
+    setEditingMusicPresetId(null);
+    setMusicSaveError("");
+    setMusicAliasInput("");
+    setMusicPresetForm({ ...emptyMusicPresetForm, aliases: [] });
+  }
+
+  function updateMusicPresetForm(
+    field: keyof MusicPreset,
+    value: string | boolean
+  ) {
+    setMusicPresetForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function normalizeMusicAliases(aliases: string[]) {
+    return Array.from(
+      new Set(aliases.map((alias) => alias.trim().toLowerCase()).filter(Boolean))
+    );
+  }
+
+  function addMusicAlias() {
+    const alias = musicAliasInput.trim().toLowerCase();
+
+    if (!alias) {
+      return;
+    }
+
+    setMusicPresetForm((current) => ({
+      ...current,
+      aliases: normalizeMusicAliases([...current.aliases, alias]),
+    }));
+    setMusicAliasInput("");
+  }
+
+  function removeMusicAlias(alias: string) {
+    setMusicPresetForm((current) => ({
+      ...current,
+      aliases: current.aliases.filter((item) => item !== alias),
+    }));
+  }
+
+  function validateMusicPresetForm() {
+    if (!musicPresetForm.name.trim()) {
+      return "Введите название сценария.";
+    }
+
+    if (!musicPresetForm.url.trim()) {
+      return "Вставьте ссылку на плейлист, альбом или страницу.";
+    }
+
+    return "";
+  }
+
+  function extractMusicUrl(value: string) {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return "";
+    }
+
+    const srcMatch = trimmed.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+
+    if (srcMatch?.[1]) {
+      return srcMatch[1].trim();
+    }
+
+    const hrefMatch = trimmed.match(/\bhref\s*=\s*["']([^"']+)["']/i);
+
+    if (hrefMatch?.[1]) {
+      return hrefMatch[1].trim();
+    }
+
+    return trimmed;
+  }
+
+  async function handleSaveMusicPreset() {
+    const validationError = validateMusicPresetForm();
+
+    if (validationError) {
+      setMusicSaveError(validationError);
+      return;
+    }
+
+    try {
+      setMusicSaveError("");
+      const savedPresets = await saveMediaPreset({
+        preset_id: musicPresetForm.preset_id,
+        name: musicPresetForm.name.trim(),
+        url: extractMusicUrl(musicPresetForm.url),
+        aliases: normalizeMusicAliases(musicPresetForm.aliases),
+        enabled: musicPresetForm.enabled,
+      });
+      setMusicPresets(savedPresets);
+      cancelEditMusicPreset();
+    } catch (err) {
+      setMusicSaveError(
+        err instanceof Error ? err.message : "Не удалось сохранить сценарий"
+      );
+    }
+  }
+
+  async function handleDeleteMusicPreset(presetId: string) {
+    try {
+      setMusicPresets(await deleteMediaPreset(presetId));
+      setMusicError("");
+    } catch (err) {
+      setMusicError(
+        err instanceof Error ? err.message : "Не удалось удалить сценарий"
+      );
+    }
+  }
+
+  async function handleToggleMusicPreset(preset: MusicPreset) {
+    try {
+      setMusicPresets(
+        await saveMediaPreset({
+          ...preset,
+          enabled: !preset.enabled,
+        })
+      );
+      setMusicError("");
+    } catch (err) {
+      setMusicError(
+        err instanceof Error ? err.message : "Не удалось изменить сценарий"
+      );
+    }
+  }
+
+  async function handleTestMusicPreset(preset?: MusicPreset) {
+    const url = extractMusicUrl(preset?.url ?? musicPresetForm.url);
+
+    if (!url) {
+      setMusicSaveError("Вставьте ссылку перед проверкой.");
+      return;
+    }
+
+    try {
+      setMusicSaveError("");
+      await testMediaPreset({
+        url,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Не удалось проверить сценарий";
+
+      if (preset) {
+        setMusicError(message);
+      } else {
+        setMusicSaveError(message);
+      }
+    }
+  }
+
+  function renderMusicPresetForm() {
+    return (
+      <>
+        {musicSaveError && (
+          <div className="settings-inline-error">{musicSaveError}</div>
+        )}
+
+        <div className="settings-app-form settings-music-form">
+          <label>
+            Название сценария
+            <input
+              value={musicPresetForm.name}
+              placeholder="Моя волна"
+              onChange={(event) =>
+                updateMusicPresetForm("name", event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            Ссылка
+            <input
+              value={musicPresetForm.url}
+              placeholder="https://music.yandex.ru/..."
+              onChange={(event) =>
+                updateMusicPresetForm("url", event.target.value)
+              }
+            />
+            <span className="settings-field-hint">
+              Можно вставить обычную ссылку или iframe-код Яндекс Музыки. Если
+              вставить iframe-код, Ziren сохранит ссылку из src.
+            </span>
+          </label>
+
+          <div className="settings-music-aliases settings-app-form-wide">
+            <span>Алиасы</span>
+            <div className="settings-music-alias-row">
+              <input
+                value={musicAliasInput}
+                placeholder="Новый алиас"
+                onChange={(event) => setMusicAliasInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addMusicAlias();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={!musicAliasInput.trim()}
+                onClick={addMusicAlias}
+              >
+                +
+              </button>
+            </div>
+            <div className="settings-trigger-list">
+              {musicPresetForm.aliases.length > 0 ? (
+                musicPresetForm.aliases.map((alias) => (
+                  <span className="settings-trigger-chip" key={alias}>
+                    <span>{alias}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeMusicAlias(alias)}
+                      aria-label={`Удалить алиас ${alias}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <p className="settings-empty-triggers">Алиасы не заданы</p>
+              )}
+            </div>
+            <small>
+              Например: моя волна, любимые песни, включи мой плейлист
+            </small>
+          </div>
+
+          <label className="settings-music-enabled settings-app-form-wide">
+            <input
+              type="checkbox"
+              checked={musicPresetForm.enabled}
+              onChange={(event) =>
+                updateMusicPresetForm("enabled", event.target.checked)
+              }
+            />
+            Сценарий включен
+          </label>
+        </div>
+      </>
+    );
   }
 
   function renderAppForm() {
@@ -701,6 +1016,10 @@ export default function SettingsModal({
       return "Приложения";
     }
 
+    if (activeSection === "music") {
+      return "Музыка";
+    }
+
     return "Раздел недоступен";
   }
 
@@ -756,7 +1075,9 @@ export default function SettingsModal({
                   ? "Триггеры функций"
                   : activeSection === "apps"
                     ? "Приложения"
-                    : "Раздел недоступен"}
+                    : activeSection === "music"
+                      ? "Музыка"
+                      : "Раздел недоступен"}
               </h2>
             </div>
 
@@ -945,6 +1266,157 @@ export default function SettingsModal({
                       <div className="settings-inline-error">
                         {saveErrors[feature.feature_id]}
                       </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {activeSection === "music" && (
+              <div className="settings-feature-list">
+                {musicError && (
+                  <div className="settings-warning">
+                    <strong>MUSIC ERROR</strong>
+                    <span>{musicError}</span>
+                  </div>
+                )}
+
+                <article className="settings-feature-card">
+                  <div className="settings-feature-top">
+                    <div>
+                      <h4>Как работает музыка</h4>
+                      <span>
+                        Ziren управляет музыкой через медиа-клавиши Windows.
+                        Это работает с Яндекс Музыкой, Spotify, YouTube,
+                        браузером и другими плеерами, если они поддерживают
+                        системные медиа-клавиши.
+                      </span>
+                      <span>
+                        Вы можете добавить ссылку на плейлист, альбом или
+                        страницу. Ziren откроет эту ссылку по голосовой команде,
+                        но воспроизведение нужно запустить вручную на странице.
+                        После первого запуска вы сможете говорить: пауза,
+                        продолжи музыку, следующий трек, предыдущий трек.
+                      </span>
+                    </div>
+
+                    <div className="settings-feature-actions">
+                      <button
+                        type="button"
+                        className="settings-expand-button"
+                        onClick={beginCreateMusicPreset}
+                      >
+                        Добавить сценарий
+                      </button>
+                    </div>
+                  </div>
+                </article>
+
+                {editingMusicPresetId === "__new__" && (
+                  <article className="settings-feature-card">
+                    <div className="settings-feature-top">
+                      <div>
+                        <h4>Новый сценарий</h4>
+                        <span>Название, ссылка и голосовые алиасы</span>
+                      </div>
+                    </div>
+
+                    {renderMusicPresetForm()}
+
+                    <div className="settings-trigger-controls">
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveMusicPreset()}
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleTestMusicPreset()}
+                      >
+                        Проверить ссылку
+                      </button>
+                      <button type="button" onClick={cancelEditMusicPreset}>
+                        Отмена
+                      </button>
+                    </div>
+                  </article>
+                )}
+
+                {musicPresets.map((preset) => (
+                  <article className="settings-feature-card" key={preset.preset_id}>
+                    <div className="settings-feature-top">
+                      <div>
+                        <h4>{preset.name}</h4>
+                        <span>{preset.url}</span>
+                      </div>
+
+                      <div className="settings-feature-actions">
+                        <strong>{preset.enabled ? "ON" : "OFF"}</strong>
+                        <button
+                          type="button"
+                          onClick={() => void handleToggleMusicPreset(preset)}
+                        >
+                          {preset.enabled ? "Выключить" : "Включить"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => beginEditMusicPreset(preset)}
+                        >
+                          Редактировать
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleTestMusicPreset(preset)}
+                        >
+                          Проверить ссылку
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteMusicPreset(preset.preset_id)}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="settings-feature-divider" />
+
+                    <div className="settings-trigger-list">
+                      {preset.aliases.length > 0 ? (
+                        preset.aliases.map((alias) => (
+                          <span className="settings-trigger-chip" key={alias}>
+                            <span>{alias}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <p className="settings-empty-triggers">
+                          Алиасы не заданы
+                        </p>
+                      )}
+                    </div>
+
+                    {editingMusicPresetId === preset.preset_id && (
+                      <>
+                        {renderMusicPresetForm()}
+                        <div className="settings-trigger-controls">
+                          <button
+                            type="button"
+                            onClick={() => void handleSaveMusicPreset()}
+                          >
+                            Сохранить
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleTestMusicPreset()}
+                          >
+                            Проверить ссылку
+                          </button>
+                          <button type="button" onClick={cancelEditMusicPreset}>
+                            Отмена
+                          </button>
+                        </div>
+                      </>
                     )}
                   </article>
                 ))}

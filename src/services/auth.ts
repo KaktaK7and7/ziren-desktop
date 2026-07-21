@@ -114,6 +114,24 @@ export async function validateSavedSession() {
 }
 
 
+export async function logoutUser() {
+  const token = getSessionToken();
+
+  try {
+    if (token) {
+      await fetch(`${AUTH_SITE_URL}/api/desktop/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+  } finally {
+    clearSession();
+  }
+}
+
+
 export async function uploadDesktopAvatar(file: File) {
   const token = getSessionToken();
 

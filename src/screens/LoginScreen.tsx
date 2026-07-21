@@ -4,7 +4,7 @@ import { loginUser } from "../services/auth";
 
 
 type Props = {
-  onLoginSuccess: () => void;
+  onLoginSuccess: () => Promise<void>;
 };
 
 export default function LoginScreen({ onLoginSuccess }: Props) {
@@ -30,7 +30,7 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       });
 
 
-      onLoginSuccess();
+      await onLoginSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка входа");
     } finally {

@@ -11,19 +11,30 @@ use tauri::{
 static ASSISTANT_PROCESS: Lazy<Mutex<Option<Child>>> =
     Lazy::new(|| Mutex::new(None));
 
+const AUTH_SITE_URL: &str = "https://www.ziren.store";
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[tauri::command]
-fn start_assistant_core() -> Result<(), String> {
+fn start_assistant_core(desktop_token: String) -> Result<(), String> {
+    let desktop_token = desktop_token.trim();
+
+    if desktop_token.is_empty() || desktop_token.len() > 512 {
+        return Err("Invalid desktop authorization token".to_string());
+    }
+
     let mut process = ASSISTANT_PROCESS
         .lock()
         .map_err(|_| "Failed to lock assistant process")?;
 
-    if process.is_some() {
-        return Ok(());
+    if let Some(child) = process.as_mut() {
+        match child.try_wait() {
+            Ok(None) => return Ok(()),
+            Ok(Some(_)) | Err(_) => *process = None,
+        }
     }
 
     #[cfg(debug_assertions)]
@@ -35,8 +46,11 @@ fn start_assistant_core() -> Result<(), String> {
                 .unwrap()
                 .to_path_buf();
 
-        let assistant_root =
-            project_root.join("ziren_assistant_v2");
+        let assistant_root = ["ziren_assistant_v2", "ziren-assistant-v2"]
+            .iter()
+            .map(|folder| project_root.join(folder))
+            .find(|path| path.exists())
+            .ok_or_else(|| "Assistant core source directory not found".to_string())?;
 
         let python_path = assistant_root
             .join(".venv")
@@ -47,11 +61,16 @@ fn start_assistant_core() -> Result<(), String> {
             .arg("-m")
             .arg("app.main")
             .current_dir(assistant_root)
+            .env("AUTH_SITE_URL", AUTH_SITE_URL)
+            .env("ZIREN_DESKTOP_TOKEN", desktop_token)
             .spawn()
     };
 
     #[cfg(not(debug_assertions))]
-    let child = Command::new("assistant-core.exe").spawn();
+    let child = Command::new("assistant-core.exe")
+        .env("AUTH_SITE_URL", AUTH_SITE_URL)
+        .env("ZIREN_DESKTOP_TOKEN", desktop_token)
+        .spawn();
 
     match child {
         Ok(child) => {
@@ -73,8 +92,10 @@ fn start_assistant_core() -> Result<(), String> {
     }
 }
 
-fn stop_assistant_core() {
-    let mut process = ASSISTANT_PROCESS.lock().unwrap();
+fn stop_assistant_core_process() -> Result<(), String> {
+    let mut process = ASSISTANT_PROCESS
+        .lock()
+        .map_err(|_| "Failed to lock assistant process")?;
 
     if let Some(child) = process.as_mut() {
         let _ = child.kill();
@@ -84,6 +105,13 @@ fn stop_assistant_core() {
     }
 
     *process = None;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_assistant_core() -> Result<(), String> {
+    stop_assistant_core_process()
 }
 
 fn show_main_window(app: &AppHandle) {
@@ -193,7 +221,7 @@ fn show_tray_menu(app: &AppHandle, x: f64, y: f64) {
 }
 
 fn exit_app(app: AppHandle) {
-    stop_assistant_core();
+    let _ = stop_assistant_core_process();
     app.exit(0);
 }
 
@@ -230,6 +258,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             start_assistant_core,
+            stop_assistant_core,
             tray_open,
             tray_hide,
             tray_menu_hide,

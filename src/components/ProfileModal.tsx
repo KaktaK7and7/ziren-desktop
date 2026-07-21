@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 import {
   getCurrentUser,
-  clearSession,
   type UserData,
 } from "../services/session";
 
 import {
   fetchDesktopProfile,
   getProfileUrl,
+  logoutUser,
   resolveAuthAssetUrl,
   uploadDesktopAvatar,
 } from "../services/auth";
@@ -75,9 +76,24 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
     }
   }
 
-  function handleLogout() {
-    clearSession();
-    onLogout();
+  async function handleLogout() {
+    setError("");
+    setIsSyncing(true);
+
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error("Failed to revoke desktop session:", err);
+    } finally {
+      try {
+        await invoke("stop_assistant_core");
+      } catch (err) {
+        console.error("Failed to stop assistant core:", err);
+      }
+
+      setIsSyncing(false);
+      onLogout();
+    }
   }
 
   async function handleOpenSiteProfile() {

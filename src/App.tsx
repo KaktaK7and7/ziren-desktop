@@ -9,7 +9,7 @@ import ScreenOverlay from "./screens/ScreenOverlay";
 import TrayMenu from "./screens/TrayMenu";
 
 import { validateSavedSession } from "./services/auth";
-import { getCurrentUser } from "./services/session";
+import { getCurrentUser, getSessionToken } from "./services/session";
 
 type Screen = "loading" | "login" | "main";
 
@@ -21,12 +21,14 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("loading");
 
   async function startAssistantAndOpenMain() {
-    try {
-      await invoke("start_assistant_core");
-    } catch (error) {
-      console.error("Failed to start assistant core:", error);
+    const desktopToken = getSessionToken();
+
+    if (!desktopToken) {
+      setScreen("login");
+      throw new Error("Нет токена авторизации для запуска ассистента");
     }
 
+    await invoke("start_assistant_core", { desktopToken });
     setScreen("main");
   }
 
@@ -44,7 +46,12 @@ export default function App() {
       const validUser = await validateSavedSession();
 
       if (validUser) {
-        await startAssistantAndOpenMain();
+        try {
+          await startAssistantAndOpenMain();
+        } catch (error) {
+          console.error("Failed to start assistant core:", error);
+          setScreen("login");
+        }
       } else {
         setScreen("login");
       }

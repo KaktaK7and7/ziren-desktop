@@ -1,4 +1,4 @@
-import { ASSISTANT_API_URL } from "./assistantEvents";
+import { fetchAssistantApi } from "./localApi";
 
 export type MusicPreset = {
   preset_id: string;
@@ -19,7 +19,7 @@ async function readError(response: Response, fallback: string) {
 }
 
 export async function fetchMediaPresets(): Promise<MusicPreset[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/media/presets`);
+  const response = await fetchAssistantApi("/media/presets");
 
   if (!response.ok) {
     throw new Error("Failed to load music presets");
@@ -32,7 +32,7 @@ export async function fetchMediaPresets(): Promise<MusicPreset[]> {
 export async function saveMediaPreset(
   preset: Partial<MusicPreset>
 ): Promise<MusicPreset[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/media/presets`, {
+  const response = await fetchAssistantApi("/media/presets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(preset),
@@ -49,8 +49,8 @@ export async function saveMediaPreset(
 export async function deleteMediaPreset(
   presetId: string
 ): Promise<MusicPreset[]> {
-  const response = await fetch(
-    `${ASSISTANT_API_URL}/media/presets/${encodeURIComponent(presetId)}`,
+  const response = await fetchAssistantApi(
+    `/media/presets/${encodeURIComponent(presetId)}`,
     { method: "DELETE" }
   );
 
@@ -63,7 +63,7 @@ export async function deleteMediaPreset(
 }
 
 export async function testMediaPreset(params: { url: string }): Promise<void> {
-  const response = await fetch(`${ASSISTANT_API_URL}/media/presets/test`, {
+  const response = await fetchAssistantApi("/media/presets/test", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),

@@ -14,6 +14,7 @@ import {
   resolveAuthAssetUrl,
   uploadDesktopAvatar,
 } from "../services/auth";
+import { clearLocalApiToken } from "../services/localApi";
 
 import "./ProfileModal.css";
 
@@ -91,6 +92,7 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
         console.error("Failed to stop assistant core:", err);
       }
 
+      clearLocalApiToken();
       setIsSyncing(false);
       onLogout();
     }

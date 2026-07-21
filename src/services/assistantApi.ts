@@ -1,4 +1,4 @@
-const ASSISTANT_API_URL = "http://127.0.0.1:8787";
+import { fetchAssistantApi } from "./localApi";
 
 export type AssistantStatus = {
   running: boolean;
@@ -7,7 +7,7 @@ export type AssistantStatus = {
 };
 
 export async function getAssistantStatus(): Promise<AssistantStatus> {
-  const response = await fetch(`${ASSISTANT_API_URL}/status`);
+  const response = await fetchAssistantApi("/status");
 
   if (!response.ok) {
     throw new Error("Assistant status request failed");
@@ -17,7 +17,7 @@ export async function getAssistantStatus(): Promise<AssistantStatus> {
 }
 
 export async function toggleAssistantListening(): Promise<AssistantStatus> {
-  const response = await fetch(`${ASSISTANT_API_URL}/listening/toggle`, {
+  const response = await fetchAssistantApi("/listening/toggle", {
     method: "POST",
   });
 
@@ -29,7 +29,7 @@ export async function toggleAssistantListening(): Promise<AssistantStatus> {
 }
 
 export async function enableAssistantListening(): Promise<AssistantStatus> {
-  const response = await fetch(`${ASSISTANT_API_URL}/listening/enable`, {
+  const response = await fetchAssistantApi("/listening/enable", {
     method: "POST",
   });
 
@@ -41,7 +41,7 @@ export async function enableAssistantListening(): Promise<AssistantStatus> {
 }
 
 export async function disableAssistantListening(): Promise<AssistantStatus> {
-  const response = await fetch(`${ASSISTANT_API_URL}/listening/disable`, {
+  const response = await fetchAssistantApi("/listening/disable", {
     method: "POST",
   });
 

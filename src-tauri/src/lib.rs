@@ -19,11 +19,19 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn start_assistant_core(desktop_token: String) -> Result<(), String> {
+fn start_assistant_core(
+    desktop_token: String,
+    local_api_token: String,
+) -> Result<(), String> {
     let desktop_token = desktop_token.trim();
+    let local_api_token = local_api_token.trim();
 
     if desktop_token.is_empty() || desktop_token.len() > 512 {
         return Err("Invalid desktop authorization token".to_string());
+    }
+
+    if local_api_token.len() < 32 || local_api_token.len() > 512 {
+        return Err("Invalid local API token".to_string());
     }
 
     let mut process = ASSISTANT_PROCESS
@@ -63,6 +71,7 @@ fn start_assistant_core(desktop_token: String) -> Result<(), String> {
             .current_dir(assistant_root)
             .env("AUTH_SITE_URL", AUTH_SITE_URL)
             .env("ZIREN_DESKTOP_TOKEN", desktop_token)
+            .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
             .spawn()
     };
 
@@ -70,6 +79,7 @@ fn start_assistant_core(desktop_token: String) -> Result<(), String> {
     let child = Command::new("assistant-core.exe")
         .env("AUTH_SITE_URL", AUTH_SITE_URL)
         .env("ZIREN_DESKTOP_TOKEN", desktop_token)
+        .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
         .spawn();
 
     match child {

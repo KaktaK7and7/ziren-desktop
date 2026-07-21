@@ -20,6 +20,7 @@ import {
 } from "../services/assistantEvents";
 
 import { getCurrentUser } from "../services/session";
+import { fetchAssistantApi } from "../services/localApi";
 
 type Props = {
   onLogout: () => void;
@@ -392,9 +393,7 @@ export default function MainScreen({
 
     async function loadAssistantLogs() {
       try {
-        const response = await fetch(
-          "http://127.0.0.1:8787/logs"
-        );
+        const response = await fetchAssistantApi("/logs");
 
         if (!response.ok) {
           throw new Error(

@@ -1,4 +1,4 @@
-const ASSISTANT_API_URL = "http://127.0.0.1:8787";
+import { fetchAssistantApi } from "./localApi";
 
 export type FeatureTriggerGroup = {
   action_id: string;
@@ -50,7 +50,7 @@ type SaveFeatureTriggersResponse =
     };
 
 export async function fetchFeatureTriggers(): Promise<FeatureTriggerInfo[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/features/triggers`);
+  const response = await fetchAssistantApi("/features/triggers");
 
   if (!response.ok) {
     throw new Error("Не удалось загрузить триггеры функций");
@@ -64,7 +64,7 @@ export async function fetchFeatureTriggers(): Promise<FeatureTriggerInfo[]> {
 export async function fetchFeatureTriggerDefaults(): Promise<
   FeatureTriggerDefaultsInfo[]
 > {
-  const response = await fetch(`${ASSISTANT_API_URL}/features/triggers/defaults`);
+  const response = await fetchAssistantApi("/features/triggers/defaults");
 
   if (!response.ok) {
     throw new Error("Не удалось загрузить дефолтные триггеры");
@@ -83,7 +83,7 @@ export async function saveFeatureTriggers(
     triggerGroups.map((group) => [group.action_id, group.triggers])
   );
 
-  const response = await fetch(`${ASSISTANT_API_URL}/features/triggers`, {
+  const response = await fetchAssistantApi("/features/triggers", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -1,3 +1,5 @@
+import { fetchAssistantApi } from "./localApi";
+
 export type AssistantLog = {
   ts: string;
   level: "info" | "warn" | "error";
@@ -6,7 +8,7 @@ export type AssistantLog = {
 };
 
 export async function fetchAssistantLogs(): Promise<AssistantLog[]> {
-  const response = await fetch("http://127.0.0.1:8787/logs");
+  const response = await fetchAssistantApi("/logs");
 
   if (!response.ok) {
     throw new Error(`Assistant logs request failed: ${response.status}`);

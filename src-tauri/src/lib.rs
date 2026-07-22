@@ -8,7 +8,12 @@ use tauri::{
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
-static ASSISTANT_PROCESS: Lazy<Mutex<Option<Child>>> =
+struct AssistantProcess {
+    child: Child,
+    local_api_token: String,
+}
+
+static ASSISTANT_PROCESS: Lazy<Mutex<Option<AssistantProcess>>> =
     Lazy::new(|| Mutex::new(None));
 
 const AUTH_SITE_URL: &str = "https://www.ziren.store";
@@ -38,9 +43,14 @@ fn start_assistant_core(
         .lock()
         .map_err(|_| "Failed to lock assistant process")?;
 
-    if let Some(child) = process.as_mut() {
-        match child.try_wait() {
-            Ok(None) => return Ok(()),
+    if let Some(current) = process.as_mut() {
+        match current.child.try_wait() {
+            Ok(None) if current.local_api_token == local_api_token => return Ok(()),
+            Ok(None) => {
+                let _ = current.child.kill();
+                let _ = current.child.wait();
+                *process = None;
+            }
             Ok(Some(_)) | Err(_) => *process = None,
         }
     }
@@ -84,7 +94,10 @@ fn start_assistant_core(
 
     match child {
         Ok(child) => {
-            *process = Some(child);
+            *process = Some(AssistantProcess {
+                child,
+                local_api_token: local_api_token.to_string(),
+            });
 
             println!("✅ Assistant core started");
 
@@ -107,9 +120,9 @@ fn stop_assistant_core_process() -> Result<(), String> {
         .lock()
         .map_err(|_| "Failed to lock assistant process")?;
 
-    if let Some(child) = process.as_mut() {
-        let _ = child.kill();
-        let _ = child.wait();
+    if let Some(current) = process.as_mut() {
+        let _ = current.child.kill();
+        let _ = current.child.wait();
 
         println!("🛑 Assistant core stopped");
     }

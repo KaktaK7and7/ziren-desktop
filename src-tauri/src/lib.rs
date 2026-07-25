@@ -15,7 +15,45 @@ struct AssistantProcess {
 
 static ASSISTANT_PROCESS: Lazy<Mutex<Option<AssistantProcess>>> = Lazy::new(|| Mutex::new(None));
 
-const AUTH_SITE_URL: &str = "https://www.ziren.store";
+const PRODUCTION_AUTH_SITE_URL: &str = "https://www.ziren.store";
+const DEBUG_AUTH_SITE_URL_ENV: &str = "ZIREN_AUTH_SITE_URL";
+
+fn get_auth_site_url() -> Result<String, String> {
+    #[cfg(not(debug_assertions))]
+    {
+        Ok(PRODUCTION_AUTH_SITE_URL.to_string())
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let configured_url = std::env::var(DEBUG_AUTH_SITE_URL_ENV)
+            .unwrap_or_else(|_| PRODUCTION_AUTH_SITE_URL.to_string());
+        let normalized_url = configured_url.trim().trim_end_matches('/');
+        let (scheme, authority) = normalized_url
+            .split_once("://")
+            .ok_or_else(|| format!("{DEBUG_AUTH_SITE_URL_ENV} must include a URL scheme"))?;
+        let hostname = authority.split(':').next().unwrap_or_default();
+        let is_local_http =
+            scheme == "http" && matches!(hostname, "localhost" | "127.0.0.1");
+        let is_https = scheme == "https";
+
+        if authority.is_empty()
+            || normalized_url.len() > 2048
+            || (!is_https && !is_local_http)
+            || normalized_url.contains('@')
+            || authority.contains('/')
+            || authority.contains('?')
+            || authority.contains('#')
+            || normalized_url.chars().any(char::is_whitespace)
+        {
+            return Err(format!(
+                "{DEBUG_AUTH_SITE_URL_ENV} must be an HTTPS origin or local HTTP origin"
+            ));
+        }
+
+        Ok(normalized_url.to_string())
+    }
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -26,6 +64,7 @@ fn greet(name: &str) -> String {
 fn start_assistant_core(desktop_token: String, local_api_token: String) -> Result<(), String> {
     let desktop_token = desktop_token.trim();
     let local_api_token = local_api_token.trim();
+    let auth_site_url = get_auth_site_url()?;
 
     if desktop_token.is_empty() || desktop_token.len() > 512 {
         return Err("Invalid desktop authorization token".to_string());
@@ -74,7 +113,7 @@ fn start_assistant_core(desktop_token: String, local_api_token: String) -> Resul
             .arg("-m")
             .arg("app.main")
             .current_dir(assistant_root)
-            .env("AUTH_SITE_URL", AUTH_SITE_URL)
+            .env("AUTH_SITE_URL", &auth_site_url)
             .env("ZIREN_DESKTOP_TOKEN", desktop_token)
             .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
             .spawn()
@@ -82,7 +121,7 @@ fn start_assistant_core(desktop_token: String, local_api_token: String) -> Resul
 
     #[cfg(not(debug_assertions))]
     let child = Command::new("assistant-core.exe")
-        .env("AUTH_SITE_URL", AUTH_SITE_URL)
+        .env("AUTH_SITE_URL", &auth_site_url)
         .env("ZIREN_DESKTOP_TOKEN", desktop_token)
         .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
         .spawn();

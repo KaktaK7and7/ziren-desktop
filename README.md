@@ -24,3 +24,19 @@ cargo check --manifest-path src-tauri/Cargo.toml
 
 Для полной Rust-проверки необходим установленный stable Rust toolchain и
 системные зависимости Tauri.
+
+## Тестовое окружение
+
+Release-сборки всегда используют production gateway
+`https://www.ziren.store`. В debug-режиме gateway можно временно заменить для
+проверки изолированного Railway environment:
+
+```powershell
+$env:VITE_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
+$env:ZIREN_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
+npm run tauri dev
+```
+
+Обе переменные должны указывать на один HTTPS origin без дополнительного пути,
+query-параметров и логина с паролем. Они не сохраняются в репозитории и
+действуют только в текущем окне PowerShell.

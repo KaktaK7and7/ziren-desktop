@@ -254,6 +254,11 @@
   color: rgba(245, 247, 255, 0.58);
 }
 
+.profile-main-info .profile-status-text {
+  color: rgba(223, 252, 255, 0.78);
+  font-size: 13px;
+}
+
 .profile-tags {
   display: flex;
   flex-wrap: wrap;
@@ -435,6 +440,15 @@
   color: rgba(245, 247, 255, 0.34);
   font-size: 22px;
   font-weight: 900;
+}
+
+.profile-achievement.unlocked {
+  border-color: rgba(0, 245, 255, 0.48);
+  color: #00f5ff;
+  background: rgba(0, 245, 255, 0.1);
+  box-shadow:
+    inset 0 0 18px rgba(0, 245, 255, 0.08),
+    0 0 18px rgba(0, 245, 255, 0.12);
 }
 
 .profile-social-panel {

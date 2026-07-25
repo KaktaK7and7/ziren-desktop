@@ -1,7 +1,42 @@
-# Tauri + React + Typescript
+# Ziren Desktop
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Desktop-клиент Ziren на Tauri, React и TypeScript. Он отвечает за вход в
+аккаунт, интерфейс, запуск и остановку локального Python Core.
 
-## Recommended IDE Setup
+## Границы безопасности
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Пароль отправляется только в `https://www.ziren.store/api/desktop/login`.
+- Полученный desktop-токен передаётся Core через переменную окружения, а не
+  через аргументы процесса.
+- Для локального API Core создаётся отдельный случайный
+  `ZIREN_LOCAL_API_TOKEN`. Он живёт только в памяти текущего окна и процесса.
+- Все обращения к `127.0.0.1:8787` проходят через
+  `src/services/localApi.ts`, который добавляет локальный токен.
+- При выходе серверная desktop-сессия отзывается, Core останавливается, оба
+  локальных токена очищаются.
+
+## Проверки
+
+```bash
+npm run build
+cargo check --manifest-path src-tauri/Cargo.toml
+```
+
+Для полной Rust-проверки необходим установленный stable Rust toolchain и
+системные зависимости Tauri.
+
+## Тестовое окружение
+
+Release-сборки всегда используют production gateway
+`https://www.ziren.store`. В debug-режиме gateway можно временно заменить для
+проверки изолированного Railway environment:
+
+```powershell
+$env:VITE_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
+$env:ZIREN_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
+npm run tauri dev
+```
+
+Обе переменные должны указывать на один HTTPS origin без дополнительного пути,
+query-параметров и логина с паролем. Они не сохраняются в репозитории и
+действуют только в текущем окне PowerShell.

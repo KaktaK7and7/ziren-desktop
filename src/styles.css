@@ -202,6 +202,61 @@ input {
   cursor: not-allowed;
 }
 
+.login-divider {
+  position: relative;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: #667085;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.login-divider::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  content: "";
+  background: rgba(0, 245, 255, 0.1);
+}
+
+.login-divider span {
+  position: relative;
+  padding: 0 10px;
+  background: #07090f;
+}
+
+.secondary-button {
+  height: 46px;
+  border: 1px solid rgba(0, 245, 255, 0.24);
+  border-radius: 15px;
+  color: #dffcff;
+  background: rgba(0, 245, 255, 0.06);
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.secondary-button:hover {
+  border-color: rgba(0, 245, 255, 0.65);
+  background: rgba(0, 245, 255, 0.11);
+}
+
+.secondary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.register-note {
+  margin: -7px 0 0;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 /* MAIN */
 
 .main-screen {
@@ -1085,4 +1140,3 @@ input {
   z-index: 100;
   pointer-events: auto;
 }
-

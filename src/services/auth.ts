@@ -6,7 +6,43 @@ import {
   type UserData,
 } from "./session";
 
-const AUTH_SITE_URL = "https://www.ziren.store";
+const PRODUCTION_AUTH_SITE_URL = "https://www.ziren.store";
+
+function getAuthSiteUrl() {
+  if (!import.meta.env.DEV) {
+    return PRODUCTION_AUTH_SITE_URL;
+  }
+
+  const configuredUrl = String(
+    import.meta.env.VITE_AUTH_SITE_URL || PRODUCTION_AUTH_SITE_URL
+  ).trim();
+  const parsedUrl = new URL(configuredUrl);
+  const isLocalHttp =
+    parsedUrl.protocol === "http:" &&
+    ["localhost", "127.0.0.1"].includes(parsedUrl.hostname);
+
+  if (parsedUrl.protocol !== "https:" && !isLocalHttp) {
+    throw new Error(
+      "VITE_AUTH_SITE_URL must use HTTPS or local HTTP"
+    );
+  }
+
+  if (
+    parsedUrl.username ||
+    parsedUrl.password ||
+    parsedUrl.search ||
+    parsedUrl.hash ||
+    (parsedUrl.pathname !== "/" && parsedUrl.pathname !== "")
+  ) {
+    throw new Error(
+      "VITE_AUTH_SITE_URL must contain only the service origin"
+    );
+  }
+
+  return parsedUrl.origin;
+}
+
+const AUTH_SITE_URL = getAuthSiteUrl();
 
 type LoginParams = {
   email: string;
@@ -41,6 +77,10 @@ export function resolveAuthAssetUrl(url?: string) {
 
 export function getProfileUrl() {
   return `${AUTH_SITE_URL}/profile`;
+}
+
+export function getRegisterUrl() {
+  return `${AUTH_SITE_URL}/register.html`;
 }
 
 export async function loginUser(params: LoginParams) {
@@ -110,6 +150,24 @@ export async function validateSavedSession() {
   } catch {
     clearSession();
     return null;
+  }
+}
+
+
+export async function logoutUser() {
+  const token = getSessionToken();
+
+  try {
+    if (token) {
+      await fetch(`${AUTH_SITE_URL}/api/desktop/logout`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+  } finally {
+    clearSession();
   }
 }
 

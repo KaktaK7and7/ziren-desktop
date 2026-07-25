@@ -1,4 +1,4 @@
-export const ASSISTANT_API_URL = "http://127.0.0.1:8787";
+import { fetchAssistantApi } from "./localApi";
 
 export type AssistantEvent = {
   id: string;
@@ -9,7 +9,7 @@ export type AssistantEvent = {
 };
 
 export async function fetchAssistantEvents(): Promise<AssistantEvent[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/events`);
+  const response = await fetchAssistantApi("/events");
 
   if (!response.ok) {
     throw new Error(`Assistant events request failed: ${response.status}`);

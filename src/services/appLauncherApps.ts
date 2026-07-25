@@ -1,4 +1,4 @@
-import { ASSISTANT_API_URL } from "./assistantEvents";
+import { fetchAssistantApi } from "./localApi";
 
 export type AppLauncherTarget = {
   target_id: string;
@@ -17,7 +17,7 @@ type AppsResponse = {
 };
 
 export async function fetchAppLauncherApps(): Promise<AppLauncherTarget[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/app-launcher/apps`);
+  const response = await fetchAssistantApi("/app-launcher/apps");
 
   if (!response.ok) {
     throw new Error("Failed to load app launcher apps");
@@ -30,7 +30,7 @@ export async function fetchAppLauncherApps(): Promise<AppLauncherTarget[]> {
 export async function saveAppLauncherApp(
   app: Partial<AppLauncherTarget>
 ): Promise<AppLauncherTarget[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/app-launcher/apps`, {
+  const response = await fetchAssistantApi("/app-launcher/apps", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(app),
@@ -50,7 +50,7 @@ export async function saveAppLauncherApp(
 }
 
 export async function cleanupAppLauncherApps(): Promise<AppLauncherTarget[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/app-launcher/apps/cleanup`, {
+  const response = await fetchAssistantApi("/app-launcher/apps/cleanup", {
     method: "POST",
   });
 
@@ -70,8 +70,8 @@ export async function cleanupAppLauncherApps(): Promise<AppLauncherTarget[]> {
 export async function deleteAppLauncherApp(
   targetId: string
 ): Promise<AppLauncherTarget[]> {
-  const response = await fetch(
-    `${ASSISTANT_API_URL}/app-launcher/apps/${encodeURIComponent(targetId)}`,
+  const response = await fetchAssistantApi(
+    `/app-launcher/apps/${encodeURIComponent(targetId)}`,
     { method: "DELETE" }
   );
 
@@ -87,7 +87,7 @@ export async function addAppLauncherAlias(
   alias: string,
   targetId: string
 ): Promise<AppLauncherTarget[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/app-launcher/aliases`, {
+  const response = await fetchAssistantApi("/app-launcher/aliases", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ alias, target_id: targetId }),
@@ -104,7 +104,7 @@ export async function addAppLauncherAlias(
 export async function deleteAppLauncherAlias(
   alias: string
 ): Promise<AppLauncherTarget[]> {
-  const response = await fetch(`${ASSISTANT_API_URL}/app-launcher/aliases`, {
+  const response = await fetchAssistantApi("/app-launcher/aliases", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ alias }),

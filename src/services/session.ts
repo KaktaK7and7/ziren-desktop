@@ -1,3 +1,23 @@
+export type ProfileStats = {
+  total_commands: number;
+  distinct_commands: number;
+  member_days: number;
+  level: number;
+  commands_in_level: number;
+  commands_to_next_level: number;
+  level_progress_percent: number;
+  achievements_unlocked: number;
+  achievements_total: number;
+};
+
+export type AchievementData = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+  unlocked: boolean;
+};
+
 export type UserData = {
   id: string;
   username: string;
@@ -5,6 +25,15 @@ export type UserData = {
   avatar_url?: string;
   created_at?: string;
   last_login_at?: string;
+  bio?: string;
+  status_text?: string;
+  public_profile_enabled?: boolean;
+  show_in_community?: boolean;
+  activity_tracking_enabled?: boolean;
+  ai_context_enabled?: boolean;
+  public_profile_url?: string | null;
+  stats?: ProfileStats;
+  achievements?: AchievementData[];
 };
 
 export type SessionData = {

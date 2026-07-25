@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import LogoOrb from "../components/LogoOrb";
-import { loginUser } from "../services/auth";
+import { getRegisterUrl, loginUser } from "../services/auth";
 
 
 type Props = {
@@ -35,6 +36,16 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
       setError(err instanceof Error ? err.message : "Ошибка входа");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleOpenRegistration() {
+    try {
+      setError("");
+      await openUrl(getRegisterUrl());
+    } catch (err) {
+      console.error("Failed to open registration page:", err);
+      setError("Не удалось открыть страницу регистрации");
     }
   }
 
@@ -87,6 +98,23 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
         <button className="primary-button" disabled={isLoading}>
           {isLoading ? "Входим..." : "Войти"}
         </button>
+
+        <div className="login-divider">
+          <span>или</span>
+        </div>
+
+        <button
+          className="secondary-button"
+          type="button"
+          disabled={isLoading}
+          onClick={handleOpenRegistration}
+        >
+          Создать аккаунт
+        </button>
+
+        <p className="register-note">
+          Регистрация откроется на официальном сайте Ziren
+        </p>
       </form>
     </div>
   );

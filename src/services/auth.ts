@@ -79,6 +79,10 @@ export function getProfileUrl() {
   return `${AUTH_SITE_URL}/profile`;
 }
 
+export function getRegisterUrl() {
+  return `${AUTH_SITE_URL}/register.html`;
+}
+
 export async function loginUser(params: LoginParams) {
   const email = params.email.trim();
   const password = params.password.trim();

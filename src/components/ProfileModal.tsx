@@ -43,6 +43,8 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
   }, [user?.avatar_url]);
 
   const initial = (user?.username ?? "Z").slice(0, 1).toUpperCase();
+  const stats = user?.stats;
+  const achievements = user?.achievements ?? [];
 
   async function syncProfile() {
     try {
@@ -171,17 +173,21 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
               </div>
 
               <p>{user?.email ?? "—"}</p>
+              {user?.status_text && (
+                <p className="profile-status-text">{user.status_text}</p>
+              )}
 
               <div className="profile-tags">
                 <span>Desktop User</span>
-                <span>AI Connected</span>
-                <span>Public Profile</span>
+                {user?.show_in_community && <span>Ziren Network</span>}
+                {user?.public_profile_enabled && <span>Public Profile</span>}
+                {user?.activity_tracking_enabled && <span>Activity Enabled</span>}
               </div>
             </div>
 
             <div className="profile-level-card">
               <span>LEVEL</span>
-              <strong>01</strong>
+              <strong>{String(stats?.level ?? 1).padStart(2, "0")}</strong>
             </div>
           </div>
         </section>
@@ -213,7 +219,16 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
                 <span>Статус</span>
                 <strong>Authorized</strong>
               </div>
+
+              <div>
+                <span>В Ziren</span>
+                <strong>{stats ? `${stats.member_days} дн.` : "—"}</strong>
+              </div>
             </div>
+
+            {user?.bio && (
+              <p className="profile-muted-text">{user.bio}</p>
+            )}
 
             <div className="profile-actions">
               <button onClick={handleOpenSiteProfile}>
@@ -234,27 +249,29 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
 
             <div className="profile-progress-row">
               <div>
-                <strong>0</strong>
+                <strong>{stats?.achievements_unlocked ?? 0}</strong>
                 <span>Достижений</span>
               </div>
 
               <div>
-                <strong>0</strong>
+                <strong>{stats?.total_commands ?? 0}</strong>
                 <span>Команд</span>
               </div>
 
               <div>
-                <strong>0</strong>
-                <span>Диалогов</span>
+                <strong>{stats?.distinct_commands ?? 0}</strong>
+                <span>Функций</span>
               </div>
             </div>
 
             <div className="profile-progress-bar">
-              <div style={{ width: "12%" }} />
+              <div style={{ width: `${stats?.level_progress_percent ?? 0}%` }} />
             </div>
 
             <p className="profile-muted-text">
-              Здесь позже будет прогресс, достижения, игровые события и активность.
+              {user?.activity_tracking_enabled
+                ? `До следующего уровня: ${stats?.commands_to_next_level ?? 25} команд.`
+                : "Учёт функций выключен. Его можно включить в профиле на сайте."}
             </p>
           </section>
 
@@ -265,11 +282,27 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             </div>
 
             <div className="profile-achievements">
-              <div className="profile-achievement">?</div>
-              <div className="profile-achievement">?</div>
-              <div className="profile-achievement">?</div>
-              <div className="profile-achievement">?</div>
-              <div className="profile-achievement">?</div>
+              {achievements.length ? (
+                achievements.map((achievement) => (
+                  <div
+                    key={achievement.id}
+                    className={`profile-achievement${
+                      achievement.unlocked ? " unlocked" : ""
+                    }`}
+                    title={`${achievement.title}: ${achievement.description}`}
+                  >
+                    {achievement.unlocked ? achievement.icon : "?"}
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="profile-achievement unlocked">◇</div>
+                  <div className="profile-achievement">?</div>
+                  <div className="profile-achievement">?</div>
+                  <div className="profile-achievement">?</div>
+                  <div className="profile-achievement">?</div>
+                </>
+              )}
             </div>
           </section>
 

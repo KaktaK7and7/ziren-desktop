@@ -33,8 +33,7 @@ fn get_auth_site_url() -> Result<String, String> {
             .split_once("://")
             .ok_or_else(|| format!("{DEBUG_AUTH_SITE_URL_ENV} must include a URL scheme"))?;
         let hostname = authority.split(':').next().unwrap_or_default();
-        let is_local_http =
-            scheme == "http" && matches!(hostname, "localhost" | "127.0.0.1");
+        let is_local_http = scheme == "http" && matches!(hostname, "localhost" | "127.0.0.1");
         let is_https = scheme == "https";
 
         if authority.is_empty()

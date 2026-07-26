@@ -8,6 +8,7 @@ import SettingsModal from "../components/SettingsModal";
 import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import ProfileModal from "../components/ProfileModal";
+import StoryModal from "../components/StoryModal";
 
 import {
   getAssistantStatus,
@@ -83,6 +84,9 @@ export default function MainScreen({
     useState(false);
 
   const [isSettingsOpen, setIsSettingsOpen] =
+    useState(false);
+
+  const [isStoryOpen, setIsStoryOpen] =
     useState(false);
 
   const [settingsInitialSection, setSettingsInitialSection] =
@@ -208,6 +212,26 @@ export default function MainScreen({
 
     initAssistantStatus();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const introKey = `ziren_story_intro_seen_${user.id}`;
+
+    if (localStorage.getItem(introKey) === "true") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      localStorage.setItem(introKey, "true");
+      setIsStoryOpen(true);
+      addGuiLog("[STORY] Unknown memory signal detected");
+    }, 900);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -456,6 +480,11 @@ export default function MainScreen({
     setIsProfileOpen(true);
   }
 
+  function handleStoryClick() {
+    addGuiLog("[STORY] Chronicle opened");
+    setIsStoryOpen(true);
+  }
+
   async function handleListeningToggle() {
     if (isLoading) return;
 
@@ -512,6 +541,15 @@ export default function MainScreen({
         <SettingsButton
           onClick={handleSettingsClick}
         />
+        <button
+          className="story-button"
+          type="button"
+          title="Хроника связи"
+          onClick={handleStoryClick}
+        >
+          <span>⌁</span>
+          Хроника
+        </button>
       </div>
 
       <button
@@ -549,6 +587,12 @@ export default function MainScreen({
           initialAppAlias={settingsInitialAppAlias}
           initialAppRequestId={settingsInitialAppRequestId}
           onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
+
+      {isStoryOpen && (
+        <StoryModal
+          onClose={() => setIsStoryOpen(false)}
         />
       )}
     </div>

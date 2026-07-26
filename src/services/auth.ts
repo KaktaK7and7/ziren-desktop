@@ -44,6 +44,28 @@ function getAuthSiteUrl() {
 
 const AUTH_SITE_URL = getAuthSiteUrl();
 
+export async function fetchAuthenticatedAuthApi(
+  path: string,
+  init: RequestInit = {},
+) {
+  const token = getSessionToken();
+
+  if (!token) {
+    throw new Error("Нет токена авторизации");
+  }
+
+  return fetch(`${AUTH_SITE_URL}${path}`, {
+    ...init,
+    headers: {
+      ...(init.body instanceof FormData
+        ? {}
+        : { "Content-Type": "application/json" }),
+      ...(init.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
 type LoginParams = {
   email: string;
   password: string;

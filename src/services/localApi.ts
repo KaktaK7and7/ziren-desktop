@@ -24,6 +24,11 @@ export function clearLocalApiToken() {
   localApiToken = "";
 }
 
+function wait(delayMs: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, delayMs);
+  });
+}
 
 export async function fetchAssistantApi(
   path: string,
@@ -40,4 +45,48 @@ export async function fetchAssistantApi(
     ...init,
     headers,
   });
+}
+
+export async function waitForAssistantApi(timeoutMs = 90_000) {
+  const startedAt = Date.now();
+  let lastError: unknown = null;
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await fetchAssistantApi("/health");
+
+      if (response.ok) {
+        return;
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(
+          "На компьютере уже запущено ядро Ziren с другой сессией. "
+          + "Полностью закрой Ziren через трей и запусти приложение снова",
+        );
+      }
+
+      lastError = new Error(
+        `Локальное ядро вернуло HTTP ${response.status}`,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error
+        && error.message.includes("другой сессией")
+      ) {
+        throw error;
+      }
+
+      lastError = error;
+    }
+
+    await wait(500);
+  }
+
+  const detail =
+    lastError instanceof Error ? `: ${lastError.message}` : "";
+
+  throw new Error(
+    `Локальное ядро Ziren не запустилось за ${Math.round(timeoutMs / 1000)} секунд${detail}`,
+  );
 }

@@ -5,7 +5,9 @@ Desktop-клиент Ziren на Tauri, React и TypeScript. Он отвечае�
 
 ## Границы безопасности
 
-- Пароль отправляется только в `https://www.ziren.store/api/desktop/login`.
+- В release пароль отправляется только в
+  `https://www.ziren.store/api/desktop/login`. Debug-сборка использует
+  изолированное тестовое окружение.
 - Полученный desktop-токен передаётся Core через переменную окружения, а не
   через аргументы процесса.
 - Для локального API Core создаётся отдельный случайный
@@ -28,18 +30,18 @@ cargo check --manifest-path src-tauri/Cargo.toml
 ## Тестовое окружение
 
 Release-сборки всегда используют production gateway
-`https://www.ziren.store`. В debug-режиме gateway можно временно заменить для
-проверки изолированного Railway environment:
+`https://www.ziren.store`. `npm run tauri dev` по умолчанию использует
+`https://auth-site-p0-security-test.up.railway.app`. При необходимости debug
+gateway можно временно заменить:
 
 ```powershell
 $env:VITE_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
-$env:ZIREN_AUTH_SITE_URL = "https://your-staging-gateway.up.railway.app"
 npm run tauri dev
 ```
 
-Обе переменные должны указывать на один HTTPS origin без дополнительного пути,
-query-параметров и логина с паролем. Они не сохраняются в репозитории и
-действуют только в текущем окне PowerShell.
+Desktop передаёт этот же origin Python Core при запуске, поэтому отдельная
+переменная для Tauri/Rust больше не нужна. Значение должно быть HTTPS origin
+без дополнительного пути, query-параметров и логина с паролем.
 
 ## Хроника связи
 

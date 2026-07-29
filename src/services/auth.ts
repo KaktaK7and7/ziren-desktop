@@ -7,6 +7,8 @@ import {
 } from "./session";
 
 const PRODUCTION_AUTH_SITE_URL = "https://www.ziren.store";
+const DEVELOPMENT_AUTH_SITE_URL =
+  "https://auth-site-p0-security-test.up.railway.app";
 
 function getAuthSiteUrl() {
   if (!import.meta.env.DEV) {
@@ -14,7 +16,7 @@ function getAuthSiteUrl() {
   }
 
   const configuredUrl = String(
-    import.meta.env.VITE_AUTH_SITE_URL || PRODUCTION_AUTH_SITE_URL
+    import.meta.env.VITE_AUTH_SITE_URL || DEVELOPMENT_AUTH_SITE_URL
   ).trim();
   const parsedUrl = new URL(configuredUrl);
   const isLocalHttp =
@@ -44,6 +46,31 @@ function getAuthSiteUrl() {
 
 const AUTH_SITE_URL = getAuthSiteUrl();
 
+export function getAuthSiteOrigin() {
+  return AUTH_SITE_URL;
+}
+
+export async function readAuthApiJson<T>(
+  response: Response,
+  fallbackMessage: string,
+) {
+  const rawBody = await response.text();
+
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch {
+    if (response.status === 404) {
+      throw new Error(
+        `${fallbackMessage}: сервер Ziren ещё не обновлён`,
+      );
+    }
+
+    throw new Error(
+      `${fallbackMessage}: сервер вернул некорректный ответ`,
+    );
+  }
+}
+
 export async function fetchAuthenticatedAuthApi(
   path: string,
   init: RequestInit = {},
@@ -54,16 +81,22 @@ export async function fetchAuthenticatedAuthApi(
     throw new Error("Нет токена авторизации");
   }
 
-  return fetch(`${AUTH_SITE_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(init.body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-      ...(init.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  try {
+    return await fetch(`${AUTH_SITE_URL}${path}`, {
+      ...init,
+      headers: {
+        ...(init.body instanceof FormData
+          ? {}
+          : { "Content-Type": "application/json" }),
+        ...(init.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch {
+    throw new Error(
+      `Не удалось подключиться к серверу Ziren (${AUTH_SITE_URL})`,
+    );
+  }
 }
 
 type LoginParams = {
@@ -125,7 +158,10 @@ export async function loginUser(params: LoginParams) {
     }),
   });
 
-  const data = (await response.json()) as DesktopLoginResponse;
+  const data = await readAuthApiJson<DesktopLoginResponse>(
+    response,
+    "Ошибка входа",
+  );
 
   if (!response.ok || !data.ok || !data.token || !data.user) {
     throw new Error(data.error || "Ошибка входа");
@@ -155,7 +191,10 @@ export async function fetchDesktopProfile() {
     },
   });
 
-  const data = (await response.json()) as DesktopMeResponse;
+  const data = await readAuthApiJson<DesktopMeResponse>(
+    response,
+    "Не удалось загрузить профиль",
+  );
 
   if (!response.ok || !data.ok || !data.user) {
     throw new Error(data.error || "Не удалось загрузить профиль");
@@ -212,7 +251,10 @@ export async function uploadDesktopAvatar(file: File) {
     body: formData,
   });
 
-  const data = (await response.json()) as DesktopMeResponse;
+  const data = await readAuthApiJson<DesktopMeResponse>(
+    response,
+    "Не удалось загрузить аватарку",
+  );
 
   if (!response.ok || !data.ok || !data.user) {
     throw new Error(data.error || "Не удалось загрузить аватарку");

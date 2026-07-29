@@ -1,4 +1,7 @@
-import { fetchAuthenticatedAuthApi } from "./auth";
+import {
+  fetchAuthenticatedAuthApi,
+  readAuthApiJson,
+} from "./auth";
 
 export type StoryRelationship = {
   trust: number;
@@ -64,10 +67,21 @@ type StoryResponse = {
 };
 
 async function readStoryResponse(response: Response) {
-  const data = (await response.json()) as StoryResponse;
+  const data = await readAuthApiJson<StoryResponse>(
+    response,
+    "Не удалось загрузить Хронику связи",
+  );
 
   if (!response.ok || !data.ok || !data.story) {
-    throw new Error(data.error || "Не удалось загрузить Хронику связи");
+    if (response.status === 401) {
+      throw new Error(
+        "Сессия Ziren устарела. Выйди из аккаунта и войди снова",
+      );
+    }
+
+    throw new Error(
+      data.error || "Не удалось загрузить Хронику связи",
+    );
   }
 
   return data.story;

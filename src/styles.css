@@ -279,16 +279,18 @@ input {
   top: 18px;
   left: 18px;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   pointer-events: auto;
 }
 
-.settings-button {
+.settings-button,
+.story-button {
   position: relative;
   z-index: 51;
-  width: 44px;
   height: 44px;
   border-radius: 15px;
-  font-size: 21px;
   border: 1px solid rgba(0, 245, 255, 0.2);
   color: #f5f7ff;
   background: rgba(7, 9, 15, 0.86);
@@ -298,7 +300,29 @@ input {
   box-shadow: 0 0 18px rgba(0, 245, 255, 0.08);
 }
 
-.settings-button:hover {
+.settings-button {
+  width: 44px;
+  font-size: 21px;
+}
+
+.story-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  color: #dffcf8;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.story-button span {
+  color: #72e4d6;
+  font-size: 19px;
+}
+
+.settings-button:hover,
+.story-button:hover {
   border-color: rgba(0, 245, 255, 0.65);
   box-shadow: 0 0 24px rgba(0, 245, 255, 0.24);
 }

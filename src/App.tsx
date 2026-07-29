@@ -8,8 +8,14 @@ import MainScreen from "./screens/MainScreen";
 import ScreenOverlay from "./screens/ScreenOverlay";
 import TrayMenu from "./screens/TrayMenu";
 
-import { validateSavedSession } from "./services/auth";
-import { ensureLocalApiToken } from "./services/localApi";
+import {
+  getAuthSiteOrigin,
+  validateSavedSession,
+} from "./services/auth";
+import {
+  ensureLocalApiToken,
+  waitForAssistantApi,
+} from "./services/localApi";
 import { getCurrentUser, getSessionToken } from "./services/session";
 
 type Screen = "loading" | "login" | "main";
@@ -34,7 +40,9 @@ export default function App() {
     await invoke("start_assistant_core", {
       desktopToken,
       localApiToken,
+      authSiteUrl: getAuthSiteOrigin(),
     });
+    await waitForAssistantApi();
     setScreen("main");
   }
 

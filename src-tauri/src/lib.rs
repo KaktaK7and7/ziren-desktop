@@ -11,47 +11,41 @@ use tauri::{
 struct AssistantProcess {
     child: Child,
     local_api_token: String,
+    desktop_token: String,
+    auth_site_url: String,
 }
 
 static ASSISTANT_PROCESS: Lazy<Mutex<Option<AssistantProcess>>> = Lazy::new(|| Mutex::new(None));
 
 const PRODUCTION_AUTH_SITE_URL: &str = "https://www.ziren.store";
-const DEBUG_AUTH_SITE_URL_ENV: &str = "ZIREN_AUTH_SITE_URL";
 
-fn get_auth_site_url() -> Result<String, String> {
+fn validate_auth_site_url(configured_url: &str) -> Result<String, String> {
+    let normalized_url = configured_url.trim().trim_end_matches('/');
+    let (scheme, authority) = normalized_url
+        .split_once("://")
+        .ok_or_else(|| "Auth site URL must include a URL scheme".to_string())?;
+    let hostname = authority.split(':').next().unwrap_or_default();
+    let is_local_http = scheme == "http" && matches!(hostname, "localhost" | "127.0.0.1");
+    let is_https = scheme == "https";
+
+    if authority.is_empty()
+        || normalized_url.len() > 2048
+        || (!is_https && !is_local_http)
+        || normalized_url.contains('@')
+        || authority.contains('/')
+        || authority.contains('?')
+        || authority.contains('#')
+        || normalized_url.chars().any(char::is_whitespace)
+    {
+        return Err("Auth site URL must be an HTTPS origin or local HTTP origin".to_string());
+    }
+
     #[cfg(not(debug_assertions))]
-    {
-        Ok(PRODUCTION_AUTH_SITE_URL.to_string())
+    if normalized_url != PRODUCTION_AUTH_SITE_URL {
+        return Err("Release builds may only use the production Ziren origin".to_string());
     }
 
-    #[cfg(debug_assertions)]
-    {
-        let configured_url = std::env::var(DEBUG_AUTH_SITE_URL_ENV)
-            .unwrap_or_else(|_| PRODUCTION_AUTH_SITE_URL.to_string());
-        let normalized_url = configured_url.trim().trim_end_matches('/');
-        let (scheme, authority) = normalized_url
-            .split_once("://")
-            .ok_or_else(|| format!("{DEBUG_AUTH_SITE_URL_ENV} must include a URL scheme"))?;
-        let hostname = authority.split(':').next().unwrap_or_default();
-        let is_local_http = scheme == "http" && matches!(hostname, "localhost" | "127.0.0.1");
-        let is_https = scheme == "https";
-
-        if authority.is_empty()
-            || normalized_url.len() > 2048
-            || (!is_https && !is_local_http)
-            || normalized_url.contains('@')
-            || authority.contains('/')
-            || authority.contains('?')
-            || authority.contains('#')
-            || normalized_url.chars().any(char::is_whitespace)
-        {
-            return Err(format!(
-                "{DEBUG_AUTH_SITE_URL_ENV} must be an HTTPS origin or local HTTP origin"
-            ));
-        }
-
-        Ok(normalized_url.to_string())
-    }
+    Ok(normalized_url.to_string())
 }
 
 #[tauri::command]
@@ -60,10 +54,14 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn start_assistant_core(desktop_token: String, local_api_token: String) -> Result<(), String> {
+fn start_assistant_core(
+    desktop_token: String,
+    local_api_token: String,
+    auth_site_url: String,
+) -> Result<(), String> {
     let desktop_token = desktop_token.trim();
     let local_api_token = local_api_token.trim();
-    let auth_site_url = get_auth_site_url()?;
+    let auth_site_url = validate_auth_site_url(&auth_site_url)?;
 
     if desktop_token.is_empty() || desktop_token.len() > 512 {
         return Err("Invalid desktop authorization token".to_string());
@@ -79,7 +77,13 @@ fn start_assistant_core(desktop_token: String, local_api_token: String) -> Resul
 
     if let Some(current) = process.as_mut() {
         match current.child.try_wait() {
-            Ok(None) if current.local_api_token == local_api_token => return Ok(()),
+            Ok(None)
+                if current.local_api_token == local_api_token
+                    && current.desktop_token == desktop_token
+                    && current.auth_site_url == auth_site_url =>
+            {
+                return Ok(());
+            }
             Ok(None) => {
                 let _ = current.child.kill();
                 let _ = current.child.wait();
@@ -130,6 +134,8 @@ fn start_assistant_core(desktop_token: String, local_api_token: String) -> Resul
             *process = Some(AssistantProcess {
                 child,
                 local_api_token: local_api_token.to_string(),
+                desktop_token: desktop_token.to_string(),
+                auth_site_url,
             });
 
             println!("✅ Assistant core started");
@@ -390,4 +396,31 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_auth_site_url;
+
+    #[test]
+    fn auth_site_url_accepts_https_and_normalizes_trailing_slash() {
+        assert_eq!(
+            validate_auth_site_url("https://auth.example.test/").unwrap(),
+            "https://auth.example.test"
+        );
+    }
+
+    #[test]
+    fn auth_site_url_accepts_loopback_http_for_development() {
+        assert_eq!(
+            validate_auth_site_url("http://127.0.0.1:3000/").unwrap(),
+            "http://127.0.0.1:3000"
+        );
+    }
+
+    #[test]
+    fn auth_site_url_rejects_paths_and_credentials() {
+        assert!(validate_auth_site_url("https://auth.example.test/api").is_err());
+        assert!(validate_auth_site_url("https://user@auth.example.test").is_err());
+    }
 }

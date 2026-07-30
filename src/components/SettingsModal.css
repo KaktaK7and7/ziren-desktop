@@ -874,6 +874,138 @@
   overflow-wrap: anywhere;
 }
 
+.settings-companion-status {
+  padding: 8px 10px;
+  border: 1px solid rgba(69, 255, 154, 0.32);
+  color: #6effad;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.settings-companion-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.settings-companion-control--nested {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(0, 245, 255, 0.14);
+}
+
+.settings-companion-control h4 {
+  margin: 0 0 7px;
+  color: #f3ffff;
+  font-size: 17px;
+}
+
+.settings-companion-control p {
+  max-width: 720px;
+  margin: 0;
+  color: rgba(235, 247, 248, 0.56);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.settings-switch {
+  position: relative;
+  display: inline-flex;
+  width: 54px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.settings-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-switch > span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.38);
+  transition: 0.18s ease;
+}
+
+.settings-switch > span::after {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6e7b7f;
+  content: "";
+  transition: 0.18s ease;
+}
+
+.settings-switch input:checked + span {
+  border-color: rgba(69, 255, 154, 0.64);
+  background: rgba(69, 255, 154, 0.13);
+  box-shadow: 0 0 16px rgba(69, 255, 154, 0.12);
+}
+
+.settings-switch input:checked + span::after {
+  transform: translateX(26px);
+  background: #45ff9a;
+  box-shadow: 0 0 10px rgba(69, 255, 154, 0.7);
+}
+
+.settings-switch input:disabled + span {
+  cursor: wait;
+  opacity: 0.5;
+}
+
+.settings-companion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.settings-companion-grid label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 245, 255, 0.14);
+  background: rgba(0, 0, 0, 0.19);
+  color: rgba(245, 255, 255, 0.76);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.settings-companion-grid input[type="number"] {
+  width: 88px;
+  height: 31px;
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  outline: none;
+  color: #efffff;
+  background: rgba(0, 0, 0, 0.38);
+  text-align: center;
+}
+
+.settings-companion-grid input[type="range"] {
+  width: 96px;
+  accent-color: #45ff9a;
+}
+
+.settings-companion-grid small {
+  min-width: 38px;
+  color: rgba(116, 232, 218, 0.72);
+  font-size: 10px;
+  text-align: right;
+}
+
 @media (max-width: 760px) {
   .settings-modal-shell {
     grid-template-columns: 1fr;
@@ -934,6 +1066,14 @@
 
   .settings-app-form {
     grid-template-columns: 1fr;
+  }
+
+  .settings-companion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-companion-control {
+    align-items: start;
   }
 
   .settings-file-row {

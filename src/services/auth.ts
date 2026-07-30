@@ -205,6 +205,32 @@ export async function fetchDesktopProfile() {
   return data.user;
 }
 
+export async function updateDesktopPreferences(preferences: {
+  activity_tracking_enabled: boolean;
+  ai_context_enabled: boolean;
+}) {
+  const response = await fetchAuthenticatedAuthApi(
+    "/api/desktop/preferences",
+    {
+      method: "PATCH",
+      body: JSON.stringify(preferences),
+    },
+  );
+  const data = await readAuthApiJson<DesktopMeResponse>(
+    response,
+    "Не удалось сохранить настройки приватности",
+  );
+
+  if (!response.ok || !data.ok || !data.user) {
+    throw new Error(
+      data.error || "Не удалось сохранить настройки приватности",
+    );
+  }
+
+  updateSessionUser(data.user);
+  return data.user;
+}
+
 export async function validateSavedSession() {
   try {
     return await fetchDesktopProfile();

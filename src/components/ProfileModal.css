@@ -460,6 +460,52 @@
   gap: 10px;
 }
 
+.profile-consent-list {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-consent-list label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 66px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 245, 255, 0.13);
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.22);
+  cursor: pointer;
+}
+
+.profile-consent-list label > span {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-consent-list strong {
+  color: #eaffff;
+  font-size: 13px;
+}
+
+.profile-consent-list small {
+  max-width: 620px;
+  color: rgba(245, 247, 255, 0.5);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.profile-consent-list input {
+  width: 20px;
+  height: 20px;
+  accent-color: #00f5ff;
+}
+
+.profile-consent-list input:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 @media (max-width: 860px) {
   .profile-topbar {
     align-items: flex-start;

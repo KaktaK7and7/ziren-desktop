@@ -25,6 +25,11 @@ import {
   testMediaPreset,
   type MusicPreset,
 } from "../services/mediaPresets";
+import {
+  fetchCompanionSettings,
+  saveCompanionSettings,
+  type CompanionSettings,
+} from "../services/companionSettings";
 
 import "./SettingsModal.css";
 
@@ -51,7 +56,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "triggers", label: "Триггеры" },
   { id: "voice", label: "Голос", disabled: true },
   { id: "interface", label: "Интерфейс", disabled: true },
-  { id: "neural", label: "Нейросеть", disabled: true },
+  { id: "neural", label: "Нейросеть" },
   { id: "account", label: "Аккаунт", disabled: true },
   { id: "system", label: "Система", disabled: true },
 ];
@@ -128,6 +133,10 @@ export default function SettingsModal({
     aliases: [],
   });
   const [musicAliasInput, setMusicAliasInput] = useState("");
+  const [companionSettings, setCompanionSettings] =
+    useState<CompanionSettings | null>(null);
+  const [companionError, setCompanionError] = useState("");
+  const [isSavingCompanion, setIsSavingCompanion] = useState(false);
 
   const defaultsByFeatureId = useMemo(() => {
     return new Map(
@@ -203,6 +212,35 @@ export default function SettingsModal({
     }
 
     loadFeatureTriggers();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCompanionSettings() {
+      try {
+        const loadedSettings = await fetchCompanionSettings();
+
+        if (mounted) {
+          setCompanionSettings(loadedSettings);
+          setCompanionError("");
+        }
+      } catch (err) {
+        if (mounted) {
+          setCompanionError(
+            err instanceof Error
+              ? err.message
+              : "Не удалось загрузить настройки компаньона",
+          );
+        }
+      }
+    }
+
+    void loadCompanionSettings();
 
     return () => {
       mounted = false;
@@ -1007,6 +1045,32 @@ export default function SettingsModal({
     );
   }
 
+  async function updateCompanionSettings(
+    patch: Partial<CompanionSettings>,
+  ) {
+    if (!companionSettings || isSavingCompanion) {
+      return;
+    }
+
+    const nextSettings = { ...companionSettings, ...patch };
+    setCompanionSettings(nextSettings);
+    setCompanionError("");
+    setIsSavingCompanion(true);
+
+    try {
+      setCompanionSettings(await saveCompanionSettings(nextSettings));
+    } catch (err) {
+      setCompanionSettings(companionSettings);
+      setCompanionError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось сохранить настройки компаньона",
+      );
+    } finally {
+      setIsSavingCompanion(false);
+    }
+  }
+
   function activeSectionTitle() {
     if (activeSection === "triggers") {
       return "Триггеры функций";
@@ -1018,6 +1082,10 @@ export default function SettingsModal({
 
     if (activeSection === "music") {
       return "Музыка";
+    }
+
+    if (activeSection === "neural") {
+      return "Мелисса и нейронный модуль";
     }
 
     return "Раздел недоступен";
@@ -1069,7 +1137,11 @@ export default function SettingsModal({
 
           <header className="settings-content-header">
             <div>
-              <span className="settings-modal-kicker">LOCAL COMMANDS</span>
+              <span className="settings-modal-kicker">
+                {activeSection === "neural"
+                  ? "COMPANION LINK"
+                  : "LOCAL COMMANDS"}
+              </span>
               <h2>
                 {activeSection === "triggers"
                   ? "Триггеры функций"
@@ -1077,6 +1149,8 @@ export default function SettingsModal({
                     ? "Приложения"
                     : activeSection === "music"
                       ? "Музыка"
+                      : activeSection === "neural"
+                        ? "Мелисса"
                       : "Раздел недоступен"}
               </h2>
             </div>
@@ -1090,11 +1164,11 @@ export default function SettingsModal({
           <div className="settings-tech-separator" />
 
           <div className="settings-modal-content">
-            {isLoading && (
+            {activeSection !== "neural" && isLoading && (
               <div className="settings-loading">Загрузка триггеров...</div>
             )}
 
-            {error && (
+            {activeSection !== "neural" && error && (
               <div className="settings-error">
                 <strong>Assistant backend недоступен</strong>
                 <span>{error}</span>
@@ -1269,6 +1343,255 @@ export default function SettingsModal({
                     )}
                   </article>
                 ))}
+              </div>
+            )}
+
+            {activeSection === "neural" && (
+              <div className="settings-feature-list">
+                {companionError && (
+                  <div className="settings-warning">
+                    <strong>COMPANION SETTINGS</strong>
+                    <span>{companionError}</span>
+                  </div>
+                )}
+
+                {!companionSettings ? (
+                  <div className="settings-loading">
+                    Загрузка настроек Мелиссы...
+                  </div>
+                ) : (
+                  <>
+                    <article className="settings-feature-card">
+                      <div className="settings-feature-top">
+                        <div>
+                          <h4>Команды через Мелиссу</h4>
+                          <span>
+                            Мелисса знает каталог функций Ziren. Если фраза
+                            начинается с явной локальной команды, действие
+                            выполняет проверенный модуль на компьютере. Модель
+                            не получает доступ к произвольным системным
+                            командам.
+                          </span>
+                        </div>
+                        <strong className="settings-companion-status">
+                          SAFE LOCAL ROUTING
+                        </strong>
+                      </div>
+                    </article>
+
+                    <article className="settings-feature-card">
+                      <div className="settings-companion-control">
+                        <div>
+                          <h4>Реакции на выполненные команды</h4>
+                          <p>
+                            Иногда Мелисса коротко прокомментирует запуск игры,
+                            музыку или другое выполненное действие. Реплики
+                            работают только при включённом учёте функций и
+                            разрешении AI-контекста в профиле.
+                          </p>
+                        </div>
+                        <label className="settings-switch">
+                          <input
+                            type="checkbox"
+                            checked={
+                              companionSettings.command_reactions_enabled
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                command_reactions_enabled:
+                                  event.target.checked,
+                              })
+                            }
+                          />
+                          <span />
+                        </label>
+                      </div>
+
+                      <div className="settings-companion-grid">
+                        <label>
+                          Вероятность реакции
+                          <input
+                            type="range"
+                            min="0"
+                            max="0.8"
+                            step="0.05"
+                            value={
+                              companionSettings.command_reaction_chance
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                command_reaction_chance: Number(
+                                  event.target.value,
+                                ),
+                              })
+                            }
+                          />
+                          <small>
+                            {Math.round(
+                              companionSettings.command_reaction_chance * 100,
+                            )}
+                            %
+                          </small>
+                        </label>
+                        <label>
+                          Пауза между реакциями
+                          <input
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={
+                              companionSettings.command_reaction_cooldown_minutes
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                command_reaction_cooldown_minutes: Number(
+                                  event.target.value,
+                                ),
+                              })
+                            }
+                          />
+                          <small>минут</small>
+                        </label>
+                      </div>
+                    </article>
+
+                    <article className="settings-feature-card">
+                      <div className="settings-companion-control">
+                        <div>
+                          <h4>Инициативный разговор</h4>
+                          <p>
+                            После длительной тишины Мелисса может сама начать
+                            разговор, вернуться к общей теме или задать вопрос.
+                            По умолчанию функция выключена.
+                          </p>
+                        </div>
+                        <label className="settings-switch">
+                          <input
+                            type="checkbox"
+                            checked={
+                              companionSettings.proactive_dialogue_enabled
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                proactive_dialogue_enabled:
+                                  event.target.checked,
+                              })
+                            }
+                          />
+                          <span />
+                        </label>
+                      </div>
+
+                      <div className="settings-companion-grid">
+                        <label>
+                          Не раньше чем через
+                          <input
+                            type="number"
+                            min="5"
+                            max="240"
+                            value={
+                              companionSettings.proactive_idle_min_minutes
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                proactive_idle_min_minutes: Number(
+                                  event.target.value,
+                                ),
+                              })
+                            }
+                          />
+                          <small>минут тишины</small>
+                        </label>
+                        <label>
+                          Не позже чем через
+                          <input
+                            type="number"
+                            min={
+                              companionSettings.proactive_idle_min_minutes
+                            }
+                            max="360"
+                            value={
+                              companionSettings.proactive_idle_max_minutes
+                            }
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                proactive_idle_max_minutes: Number(
+                                  event.target.value,
+                                ),
+                              })
+                            }
+                          />
+                          <small>минут тишины</small>
+                        </label>
+                      </div>
+
+                      <div className="settings-companion-control settings-companion-control--nested">
+                        <div>
+                          <h4>Тихие часы</h4>
+                          <p>В этот период Мелисса не начинает разговор сама.</p>
+                        </div>
+                        <label className="settings-switch">
+                          <input
+                            type="checkbox"
+                            checked={companionSettings.quiet_hours_enabled}
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                quiet_hours_enabled: event.target.checked,
+                              })
+                            }
+                          />
+                          <span />
+                        </label>
+                      </div>
+
+                      <div className="settings-companion-grid">
+                        <label>
+                          Начало
+                          <input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={companionSettings.quiet_hours_start}
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                quiet_hours_start: Number(event.target.value),
+                              })
+                            }
+                          />
+                          <small>час</small>
+                        </label>
+                        <label>
+                          Конец
+                          <input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={companionSettings.quiet_hours_end}
+                            disabled={isSavingCompanion}
+                            onChange={(event) =>
+                              void updateCompanionSettings({
+                                quiet_hours_end: Number(event.target.value),
+                              })
+                            }
+                          />
+                          <small>час</small>
+                        </label>
+                      </div>
+
+                      {isSavingCompanion && (
+                        <span className="settings-saving-label">SAVING...</span>
+                      )}
+                    </article>
+                  </>
+                )}
               </div>
             )}
 

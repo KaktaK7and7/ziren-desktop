@@ -1,16 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchMelissaStory,
-  recordMelissaStoryChoice,
   type MelissaStory,
-  type StoryChoiceOption,
+  type StoryNode,
 } from "../services/story";
 
 import "./StoryModal.css";
 
 type Props = {
   onClose: () => void;
+};
+
+const NODE_WIDTH = 190;
+const NODE_HEIGHT = 82;
+
+const STATUS_LABELS: Record<StoryNode["status"], string> = {
+  active: "разговор продолжается",
+  available: "решение формируется",
+  unlocked: "прожито",
+  discovered: "обнаружен сигнал",
+  hidden: "неизвестно",
+  missed: "непрожитый путь",
 };
 
 function relationshipLabel(value: number) {
@@ -21,28 +32,67 @@ function relationshipLabel(value: number) {
 }
 
 function relationshipWidth(value: number) {
-  return `${Math.min(100, Math.round((value / 6) * 100))}%`;
+  return `${Math.min(100, Math.round((value / 8) * 100))}%`;
+}
+
+function connectorPath(parent: StoryNode, child: StoryNode) {
+  const startX = parent.x + NODE_WIDTH;
+  const startY = parent.y + NODE_HEIGHT / 2;
+  const endX = child.x;
+  const endY = child.y + NODE_HEIGHT / 2;
+  const bend = Math.max(44, (endX - startX) * 0.46);
+
+  return [
+    `M ${startX} ${startY}`,
+    `C ${startX + bend} ${startY},`,
+    `${endX - bend} ${endY},`,
+    `${endX} ${endY}`,
+  ].join(" ");
 }
 
 export default function StoryModal({ onClose }: Props) {
   const [story, setStory] = useState<MelissaStory | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [selectedCustomOption, setSelectedCustomOption] =
-    useState<StoryChoiceOption | null>(null);
-  const [customName, setCustomName] = useState("");
+  const [selectedNodeId, setSelectedNodeId] = useState("");
+  const [zoom, setZoom] = useState(0.82);
+  const mapViewportRef = useRef<HTMLDivElement>(null);
+  const lastFocusedCurrentNodeRef = useRef("");
 
   const unlockedCount = useMemo(
-    () => story?.nodes.filter((node) => node.status === "unlocked").length ?? 0,
+    () =>
+      story?.nodes.filter((node) =>
+        ["unlocked", "active", "available"].includes(node.status)
+      ).length ?? 0,
     [story],
   );
 
-  async function loadStory() {
+  const nodeById = useMemo(
+    () => new Map(story?.nodes.map((node) => [node.id, node]) ?? []),
+    [story],
+  );
+
+  const selectedNode =
+    nodeById.get(selectedNodeId) ??
+    nodeById.get(story?.current_node_id ?? "") ??
+    story?.nodes[0] ??
+    null;
+
+  async function loadStory(showLoading = false) {
     try {
       setError("");
-      setIsLoading(true);
-      setStory(await fetchMelissaStory());
+
+      if (showLoading) {
+        setIsLoading(true);
+      }
+
+      const loadedStory = await fetchMelissaStory();
+      setStory(loadedStory);
+      setSelectedNodeId((current) =>
+        loadedStory.nodes.some((node) => node.id === current)
+          ? current
+          : loadedStory.current_node_id,
+      );
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -55,42 +105,56 @@ export default function StoryModal({ onClose }: Props) {
   }
 
   useEffect(() => {
-    void loadStory();
+    void loadStory(true);
+
+    const intervalId = window.setInterval(() => {
+      void loadStory();
+    }, 8000);
+
+    return () => window.clearInterval(intervalId);
   }, []);
 
-  async function submitChoice(
-    option: StoryChoiceOption,
-    name = "",
-  ) {
-    const choice = story?.prologue.next_choice;
-
-    if (!choice || isSubmitting) return;
-
-    if (option.requiresName && !name.trim()) {
-      setSelectedCustomOption(option);
+  useEffect(() => {
+    if (
+      !story
+      || story.current_node_id === lastFocusedCurrentNodeRef.current
+    ) {
       return;
     }
 
-    try {
-      setError("");
-      setIsSubmitting(true);
-      const updatedStory = await recordMelissaStoryChoice({
-        choiceId: choice.id,
-        optionId: option.id,
-        customName: name,
-      });
-      setStory(updatedStory);
-      setSelectedCustomOption(null);
-      setCustomName("");
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Не удалось сохранить выбор",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    lastFocusedCurrentNodeRef.current = story.current_node_id;
+    const animationFrame = window.requestAnimationFrame(() => {
+      scrollToNode(story.current_node_id, "smooth");
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [story?.current_node_id]);
+
+  function scrollToNode(
+    nodeId: string,
+    behavior: ScrollBehavior = "smooth",
+  ) {
+    const viewport = mapViewportRef.current;
+    const node = nodeById.get(nodeId);
+
+    if (!viewport || !node) return;
+
+    viewport.scrollTo({
+      left:
+        (node.x + NODE_WIDTH / 2) * zoom
+        - viewport.clientWidth / 2,
+      top:
+        (node.y + NODE_HEIGHT / 2) * zoom
+        - viewport.clientHeight / 2,
+      behavior,
+    });
+  }
+
+  function focusCurrentNode() {
+    if (!story) return;
+
+    setSelectedNodeId(story.current_node_id);
+    scrollToNode(story.current_node_id);
   }
 
   return (
@@ -104,9 +168,14 @@ export default function StoryModal({ onClose }: Props) {
             <h1>Хроника связи</h1>
           </div>
 
-          <button className="story-close" type="button" onClick={onClose}>
-            Закрыть
-          </button>
+          <div className="story-header__actions">
+            <button type="button" onClick={() => void loadStory(true)}>
+              Обновить
+            </button>
+            <button className="story-close" type="button" onClick={onClose}>
+              Закрыть
+            </button>
+          </div>
         </header>
 
         {isLoading && (
@@ -119,19 +188,17 @@ export default function StoryModal({ onClose }: Props) {
         {error && (
           <div className="story-error">
             <span>{error}</span>
-            {!story && (
-              <button type="button" onClick={() => void loadStory()}>
-                Повторить
-              </button>
-            )}
+            <button type="button" onClick={() => void loadStory(true)}>
+              Повторить
+            </button>
           </div>
         )}
 
         {story && (
-          <>
+          <div className="story-console">
             <div className="story-season">
               <div>
-                <span>ACTIVE STORY</span>
+                <span>ACTIVE SIGNAL</span>
                 <strong>{story.season.title}</strong>
               </div>
               <div>
@@ -139,173 +206,154 @@ export default function StoryModal({ onClose }: Props) {
                 <strong>{story.companion_name}</strong>
               </div>
               <div>
-                <span>MEMORY</span>
-                <strong>{unlockedCount} открыто</strong>
+                <span>CONNECTION MAP</span>
+                <strong>{unlockedCount} узлов прожито</strong>
               </div>
             </div>
 
-            <div className="story-layout">
-              <div className="story-scene">
-                {!story.prologue.completed && story.prologue.next_choice ? (
-                  <>
-                    <div className="story-progress">
-                      <span>
-                        Пролог · шаг {story.prologue.step + 1} из{" "}
-                        {story.prologue.total_steps}
-                      </span>
-                      <div>
-                        <i
-                          style={{
-                            width: `${
-                              (story.prologue.step
-                                / story.prologue.total_steps)
-                              * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {story.prologue.last_response && (
-                      <p className="story-response">
-                        {story.prologue.last_response}
-                      </p>
-                    )}
-
-                    <span className="story-eyebrow">
-                      {story.prologue.next_choice.eyebrow}
-                    </span>
-                    <blockquote>{story.prologue.next_choice.quote}</blockquote>
-                    <h2>{story.prologue.next_choice.prompt}</h2>
-
-                    <div className="story-options">
-                      {story.prologue.next_choice.options.map((option) => (
-                        <button
-                          type="button"
-                          key={option.id}
-                          disabled={isSubmitting}
-                          className={
-                            selectedCustomOption?.id === option.id
-                              ? "is-selected"
-                              : ""
-                          }
-                          onClick={() => void submitChoice(option)}
-                        >
-                          <strong>{option.label}</strong>
-                          <span>{option.description}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {selectedCustomOption && (
-                      <form
-                        className="story-name-form"
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          void submitChoice(
-                            selectedCustomOption,
-                            customName,
-                          );
-                        }}
-                      >
-                        <label htmlFor="story-custom-name">
-                          Предложить имя
-                        </label>
-                        <div>
-                          <input
-                            id="story-custom-name"
-                            value={customName}
-                            minLength={2}
-                            maxLength={32}
-                            autoFocus
-                            placeholder="От 2 до 32 символов"
-                            onChange={(event) =>
-                              setCustomName(event.target.value)
-                            }
-                          />
-                          <button
-                            type="submit"
-                            disabled={isSubmitting || customName.trim().length < 2}
-                          >
-                            Сохранить
-                          </button>
-                        </div>
-                      </form>
-                    )}
-                  </>
-                ) : (
-                  <div className="story-complete">
-                    <span className="story-eyebrow">Пролог завершён</span>
-                    <h2>Связь установлена</h2>
-                    <p>
-                      {story.prologue.last_response
-                        || "Первый фрагмент занял своё место в Хронике."}
-                    </p>
-                    <blockquote>
-                      Один факт у нас уже есть: я пришла сюда не целиком.
-                      Второй — кто-то рассчитывал, что я всё-таки дойду.
-                    </blockquote>
-                    <span className="story-coming-soon">
-                      Следующая глава появится в обновлении первого сезона
-                    </span>
-                  </div>
-                )}
-
-                <div className="story-relationship">
-                  <h3>Состояние связи</h3>
-                  {(
-                    [
-                      ["Доверие", story.relationship.trust],
-                      ["Самостоятельность", story.relationship.autonomy],
-                      ["Осторожность", story.relationship.caution],
-                    ] as const
-                  ).map(([label, value]) => (
-                    <div key={label}>
-                      <span>
-                        {label}
-                        <small>{relationshipLabel(value)}</small>
-                      </span>
-                      <div>
-                        <i style={{ width: relationshipWidth(value) }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="story-toolbar">
+              <div className="story-legend" aria-label="Легенда">
+                <span><i className="is-current" /> Текущий момент</span>
+                <span><i className="is-lived" /> Прожито</span>
+                <span><i className="is-signal" /> Обнаружено</span>
+                <span><i className="is-closed" /> Неизвестно</span>
               </div>
 
-              <aside className="story-map">
-                <div className="story-map__head">
-                  <span>MEMORY MAP</span>
-                  <strong>Сезон 1</strong>
-                </div>
+              <div className="story-zoom">
+                <button
+                  type="button"
+                  aria-label="Уменьшить масштаб"
+                  onClick={() => setZoom((value) => Math.max(0.58, value - 0.1))}
+                >
+                  −
+                </button>
+                <span>{Math.round(zoom * 100)}%</span>
+                <button
+                  type="button"
+                  aria-label="Увеличить масштаб"
+                  onClick={() => setZoom((value) => Math.min(1.2, value + 0.1))}
+                >
+                  +
+                </button>
+                <button type="button" onClick={focusCurrentNode}>
+                  Текущий узел
+                </button>
+              </div>
+            </div>
 
-                <div className="story-nodes">
+            <div className="story-map-viewport" ref={mapViewportRef}>
+              <div
+                className="story-map-spacer"
+                style={{
+                  width: story.graph.width * zoom,
+                  height: story.graph.height * zoom,
+                }}
+              >
+                <div
+                  className="story-graph"
+                  style={{
+                    width: story.graph.width,
+                    height: story.graph.height,
+                    transform: `scale(${zoom})`,
+                  }}
+                >
+                  <svg
+                    className="story-connectors"
+                    width={story.graph.width}
+                    height={story.graph.height}
+                    aria-hidden="true"
+                  >
+                    {story.nodes.flatMap((node) =>
+                      node.parent_ids.map((parentId) => {
+                        const parent = nodeById.get(parentId);
+
+                        if (!parent) return null;
+
+                        return (
+                          <path
+                            key={`${parentId}-${node.id}`}
+                            d={connectorPath(parent, node)}
+                            className={[
+                              "story-connector",
+                              `story-connector--${node.status}`,
+                            ].join(" ")}
+                          />
+                        );
+                      }),
+                    )}
+                  </svg>
+
                   {story.nodes.map((node, index) => (
-                    <article
-                      className={`story-node story-node--${node.status}`}
+                    <button
+                      type="button"
                       key={node.id}
+                      data-story-node={node.id}
+                      className={[
+                        "story-node",
+                        `story-node--${node.status}`,
+                        selectedNode?.id === node.id ? "is-selected" : "",
+                      ].join(" ")}
+                      style={{ left: node.x, top: node.y }}
+                      onClick={() => setSelectedNodeId(node.id)}
                     >
                       <span className="story-node__index">
                         {String(index + 1).padStart(2, "0")}
                       </span>
-                      <div>
+                      <span className="story-node__copy">
                         <strong>{node.title}</strong>
-                        <span>{node.subtitle}</span>
-                        {node.status !== "hidden" && (
-                          <p>{node.description}</p>
-                        )}
-                      </div>
-                    </article>
+                        <small>{node.subtitle}</small>
+                      </span>
+                      <i aria-hidden="true" />
+                    </button>
                   ))}
                 </div>
+              </div>
+            </div>
 
-                <p className="story-consent-note">
-                  Личные события попадают в «Хронику нас» только с разрешения
-                  пользователя.
+            <div className="story-inspector">
+              <section>
+                <span className="story-kicker">
+                  {selectedNode ? STATUS_LABELS[selectedNode.status] : "NODE"}
+                </span>
+                <h2>{selectedNode?.title ?? "Фрагмент не выбран"}</h2>
+                <p>
+                  {selectedNode?.description ??
+                    "Выберите узел на схеме, чтобы увидеть его состояние."}
                 </p>
+                {story.dialogue.next_prompt && (
+                  <div className="story-dialogue-hint">
+                    <strong>Следующая связь формируется в разговоре</strong>
+                    <span>
+                      Здесь нет правильной кнопки: говори с {story.companion_name},
+                      принимай решения своими словами, и схема сохранит то, что вы
+                      действительно прожили.
+                    </span>
+                  </div>
+                )}
+              </section>
+
+              <aside className="story-relationship">
+                <h3>Состояние связи</h3>
+                {(
+                  [
+                    ["Доверие", story.relationship.trust],
+                    ["Самостоятельность", story.relationship.autonomy],
+                    ["Осторожность", story.relationship.caution],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label}>
+                    <span>
+                      {label}
+                      <small>{relationshipLabel(value)}</small>
+                    </span>
+                    <div>
+                      <i style={{ width: relationshipWidth(value) }} />
+                    </div>
+                  </div>
+                ))}
               </aside>
             </div>
-          </>
+          </div>
         )}
       </section>
     </div>

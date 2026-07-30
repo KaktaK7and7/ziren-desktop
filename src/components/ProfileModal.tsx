@@ -12,6 +12,7 @@ import {
   getProfileUrl,
   logoutUser,
   resolveAuthAssetUrl,
+  updateDesktopPreferences,
   uploadDesktopAvatar,
 } from "../services/auth";
 import { clearLocalApiToken } from "../services/localApi";
@@ -106,6 +107,30 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
     } catch (err) {
       setError("Не удалось открыть профиль в браузере");
       console.error(err);
+    }
+  }
+
+  async function handlePrivacyChange(
+    activityTrackingEnabled: boolean,
+    aiContextEnabled: boolean,
+  ) {
+    try {
+      setError("");
+      setIsSyncing(true);
+      const updatedUser = await updateDesktopPreferences({
+        activity_tracking_enabled: activityTrackingEnabled,
+        ai_context_enabled:
+          activityTrackingEnabled && aiContextEnabled,
+      });
+      setUser(updatedUser);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось сохранить настройки приватности",
+      );
+    } finally {
+      setIsSyncing(false);
     }
   }
 
@@ -271,7 +296,69 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             <p className="profile-muted-text">
               {user?.activity_tracking_enabled
                 ? `До следующего уровня: ${stats?.commands_to_next_level ?? 25} команд.`
-                : "Учёт функций выключен. Его можно включить в профиле на сайте."}
+                : "Учёт функций выключен. Его можно включить ниже в настройках приватности."}
+            </p>
+          </section>
+
+          <section className="profile-panel profile-privacy-panel">
+            <div className="profile-panel-head">
+              <span>PRIVACY & CONTEXT</span>
+              <h3>Учёт функций</h3>
+            </div>
+
+            <div className="profile-consent-list">
+              <label>
+                <span>
+                  <strong>Статистика команд</strong>
+                  <small>
+                    Считать использованные функции для прогресса и достижений.
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(user?.activity_tracking_enabled)}
+                  disabled={isSyncing || !user}
+                  onChange={(event) =>
+                    void handlePrivacyChange(
+                      event.target.checked,
+                      event.target.checked
+                        ? Boolean(user?.ai_context_enabled)
+                        : false,
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                <span>
+                  <strong>Контекст для Мелиссы</strong>
+                  <small>
+                    Разрешить учитывать сохранённые действия в естественных
+                    репликах. Для команды сохраняется её короткая распознанная
+                    формулировка; содержимое экрана и файлов не передаётся.
+                  </small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(user?.ai_context_enabled)}
+                  disabled={
+                    isSyncing ||
+                    !user?.activity_tracking_enabled
+                  }
+                  onChange={(event) =>
+                    void handlePrivacyChange(
+                      true,
+                      event.target.checked,
+                    )
+                  }
+                />
+              </label>
+            </div>
+
+            <p className="profile-muted-text">
+              Настройки синхронизируются с аккаунтом. Мелисса получает только
+              события и формулировки команд, которые вы явно разрешили
+              учитывать.
             </p>
           </section>
 

@@ -9,29 +9,29 @@ export type StoryRelationship = {
   caution: number;
 };
 
-export type StoryChoiceOption = {
+export type StoryPrompt = {
   id: string;
-  label: string;
-  description: string;
-  requiresName?: boolean;
-};
-
-export type StoryChoice = {
-  id: string;
-  step: number;
   eyebrow: string;
   prompt: string;
   quote: string;
-  options: StoryChoiceOption[];
 };
 
 export type StoryNode = {
   id: string;
-  type: "fragment" | "choice" | "memory" | "scar" | "mystery";
+  type: "fragment" | "choice" | "path" | "memory" | "scar" | "mystery";
   title: string;
   subtitle: string;
   description: string;
-  status: "unlocked" | "discovered" | "hidden";
+  status:
+    | "active"
+    | "available"
+    | "unlocked"
+    | "discovered"
+    | "hidden"
+    | "missed";
+  x: number;
+  y: number;
+  parent_ids: string[];
 };
 
 export type MelissaStory = {
@@ -53,10 +53,20 @@ export type MelissaStory = {
     step: number;
     total_steps: number;
     completed: boolean;
-    next_choice: StoryChoice | null;
+    next_prompt: StoryPrompt | null;
     last_response: string;
+    interaction_mode: "dialogue";
+  };
+  dialogue: {
+    next_prompt: StoryPrompt | null;
+    interaction_mode: "dialogue";
   };
   choices: Record<string, string>;
+  current_node_id: string;
+  graph: {
+    width: number;
+    height: number;
+  };
   nodes: StoryNode[];
 };
 
@@ -89,25 +99,5 @@ async function readStoryResponse(response: Response) {
 
 export async function fetchMelissaStory() {
   const response = await fetchAuthenticatedAuthApi("/api/assistant/story");
-  return readStoryResponse(response);
-}
-
-export async function recordMelissaStoryChoice(params: {
-  choiceId: string;
-  optionId: string;
-  customName?: string;
-}) {
-  const response = await fetchAuthenticatedAuthApi(
-    "/api/assistant/story/choices",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        choice_id: params.choiceId,
-        option_id: params.optionId,
-        custom_name: params.customName || "",
-      }),
-    },
-  );
-
   return readStoryResponse(response);
 }

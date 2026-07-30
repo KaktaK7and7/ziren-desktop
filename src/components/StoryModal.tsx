@@ -55,7 +55,7 @@ export default function StoryModal({ onClose }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState("");
-  const [zoom, setZoom] = useState(0.82);
+  const [zoom, setZoom] = useState(0.52);
   const mapViewportRef = useRef<HTMLDivElement>(null);
   const lastFocusedCurrentNodeRef = useRef("");
 
@@ -157,6 +157,28 @@ export default function StoryModal({ onClose }: Props) {
     scrollToNode(story.current_node_id);
   }
 
+  function fitRelationshipWeb() {
+    const viewport = mapViewportRef.current;
+
+    if (!story || !viewport) return;
+
+    const nextZoom = Math.min(
+      0.92,
+      Math.max(
+        0.32,
+        Math.min(
+          (viewport.clientWidth - 36) / story.graph.width,
+          (viewport.clientHeight - 36) / story.graph.height,
+        ),
+      ),
+    );
+
+    setZoom(nextZoom);
+    window.requestAnimationFrame(() => {
+      viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+    });
+  }
+
   return (
     <div className="story-overlay" role="dialog" aria-modal="true">
       <div className="story-noise" aria-hidden="true" />
@@ -198,8 +220,16 @@ export default function StoryModal({ onClose }: Props) {
           <div className="story-console">
             <div className="story-season">
               <div>
-                <span>ACTIVE SIGNAL</span>
-                <strong>{story.season.title}</strong>
+                <span>LIVING STORY</span>
+                <strong>
+                  {story.story_mode.enabled
+                    ? `${story.story_mode.label} · активна`
+                    : "Режим отключён"}
+                </strong>
+              </div>
+              <div>
+                <span>CURRENT PATH</span>
+                <strong>{story.path.title} · {story.path.stance}</strong>
               </div>
               <div>
                 <span>COMPANION</span>
@@ -223,7 +253,7 @@ export default function StoryModal({ onClose }: Props) {
                 <button
                   type="button"
                   aria-label="Уменьшить масштаб"
-                  onClick={() => setZoom((value) => Math.max(0.58, value - 0.1))}
+                  onClick={() => setZoom((value) => Math.max(0.32, value - 0.1))}
                 >
                   −
                 </button>
@@ -237,6 +267,9 @@ export default function StoryModal({ onClose }: Props) {
                 </button>
                 <button type="button" onClick={focusCurrentNode}>
                   Текущий узел
+                </button>
+                <button type="button" onClick={fitRelationshipWeb}>
+                  Вся паутина
                 </button>
               </div>
             </div>
@@ -320,6 +353,10 @@ export default function StoryModal({ onClose }: Props) {
                   {selectedNode?.description ??
                     "Выберите узел на схеме, чтобы увидеть его состояние."}
                 </p>
+                <div className="story-path-note">
+                  <strong>{story.path.title}</strong>
+                  <span>{story.path.description}</span>
+                </div>
                 {story.dialogue.next_prompt && (
                   <div className="story-dialogue-hint">
                     <strong>Следующая связь формируется в разговоре</strong>
@@ -337,6 +374,7 @@ export default function StoryModal({ onClose }: Props) {
                 {(
                   [
                     ["Доверие", story.relationship.trust],
+                    ["Близость", story.relationship.closeness],
                     ["Самостоятельность", story.relationship.autonomy],
                     ["Осторожность", story.relationship.caution],
                   ] as const

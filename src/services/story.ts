@@ -5,6 +5,7 @@ import {
 
 export type StoryRelationship = {
   trust: number;
+  closeness: number;
   autonomy: number;
   caution: number;
 };
@@ -18,7 +19,14 @@ export type StoryPrompt = {
 
 export type StoryNode = {
   id: string;
-  type: "fragment" | "choice" | "path" | "memory" | "scar" | "mystery";
+  type:
+    | "fragment"
+    | "choice"
+    | "path"
+    | "memory"
+    | "bond"
+    | "scar"
+    | "mystery";
   title: string;
   subtitle: string;
   description: string;
@@ -36,12 +44,25 @@ export type StoryNode = {
 
 export type MelissaStory = {
   version: number;
+  story_mode: {
+    enabled: boolean;
+    label: string;
+    personality_source: "living_story";
+    character_locked: boolean;
+    note: string;
+  };
   season: {
     number: number;
     title: string;
     status: string;
   };
   chapter: string;
+  path: {
+    id: string;
+    title: string;
+    stance: string;
+    description: string;
+  };
   companion_name: string;
   romance: {
     enabled: boolean;
@@ -66,6 +87,7 @@ export type MelissaStory = {
   graph: {
     width: number;
     height: number;
+    layout: "relationship-web";
   };
   nodes: StoryNode[];
 };

@@ -1361,6 +1361,27 @@ export default function SettingsModal({
                   </div>
                 ) : (
                   <>
+                    <article className="settings-feature-card settings-story-mode">
+                      <div className="settings-feature-top">
+                        <div>
+                          <h4>Живой сюжет и характер Мелиссы</h4>
+                          <span>
+                            Включён по умолчанию. Характер задаётся историей и
+                            меняется через доверие, близость, самостоятельность
+                            и осторожность. Старые пресеты тона в этом режиме
+                            не переопределяют Мелиссу.
+                          </span>
+                        </div>
+                        <strong className="settings-companion-status">
+                          LIVING STORY · ACTIVE
+                        </strong>
+                      </div>
+                      <div className="settings-story-mode__rule">
+                        <span>PERSONALITY SOURCE</span>
+                        <strong>Прожитые решения и состояние связи</strong>
+                      </div>
+                    </article>
+
                     <article className="settings-feature-card">
                       <div className="settings-feature-top">
                         <div>

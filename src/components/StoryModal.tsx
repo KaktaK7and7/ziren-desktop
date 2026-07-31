@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   fetchMelissaStory,
@@ -14,6 +21,10 @@ type Props = {
 
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 82;
+const EXPANDED_NODE_WIDTH = 360;
+const EXPANDED_NODE_HEIGHT = 176;
+const MIN_ZOOM = 0.18;
+const MAX_ZOOM = 1.2;
 
 const STATUS_LABELS: Record<StoryNode["status"], string> = {
   active: "разговор продолжается",
@@ -33,6 +44,10 @@ function relationshipLabel(value: number) {
 
 function relationshipWidth(value: number) {
   return `${Math.min(100, Math.round((value / 8) * 100))}%`;
+}
+
+function clampZoom(value: number) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 }
 
 function connectorPath(parent: StoryNode, child: StoryNode) {
@@ -55,9 +70,19 @@ export default function StoryModal({ onClose }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState("");
+  const [expandedNodeId, setExpandedNodeId] = useState("");
   const [zoom, setZoom] = useState(0.52);
+  const [isPanning, setIsPanning] = useState(false);
   const mapViewportRef = useRef<HTMLDivElement>(null);
   const lastFocusedCurrentNodeRef = useRef("");
+  const zoomRef = useRef(0.52);
+  const panRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
 
   const unlockedCount = useMemo(
     () =>
@@ -133,18 +158,22 @@ export default function StoryModal({ onClose }: Props) {
   function scrollToNode(
     nodeId: string,
     behavior: ScrollBehavior = "smooth",
+    expanded = expandedNodeId === nodeId,
   ) {
     const viewport = mapViewportRef.current;
     const node = nodeById.get(nodeId);
 
     if (!viewport || !node) return;
 
+    const nodeWidth = expanded ? EXPANDED_NODE_WIDTH : NODE_WIDTH;
+    const nodeHeight = expanded ? EXPANDED_NODE_HEIGHT : NODE_HEIGHT;
+
     viewport.scrollTo({
       left:
-        (node.x + NODE_WIDTH / 2) * zoom
+        (node.x + nodeWidth / 2) * zoomRef.current
         - viewport.clientWidth / 2,
       top:
-        (node.y + NODE_HEIGHT / 2) * zoom
+        (node.y + nodeHeight / 2) * zoomRef.current
         - viewport.clientHeight / 2,
       behavior,
     });
@@ -154,7 +183,103 @@ export default function StoryModal({ onClose }: Props) {
     if (!story) return;
 
     setSelectedNodeId(story.current_node_id);
-    scrollToNode(story.current_node_id);
+    setExpandedNodeId(story.current_node_id);
+    scrollToNode(story.current_node_id, "smooth", true);
+  }
+
+  function openNode(nodeId: string) {
+    const shouldExpand = expandedNodeId !== nodeId;
+
+    setSelectedNodeId(nodeId);
+    setExpandedNodeId(shouldExpand ? nodeId : "");
+
+    if (shouldExpand) {
+      window.requestAnimationFrame(() => {
+        scrollToNode(nodeId, "smooth", true);
+      });
+    }
+  }
+
+  function setMapZoom(
+    nextZoomValue: number,
+    anchorX?: number,
+    anchorY?: number,
+  ) {
+    const viewport = mapViewportRef.current;
+    const nextZoom = clampZoom(nextZoomValue);
+    const previousZoom = zoomRef.current;
+
+    if (!viewport || nextZoom === previousZoom) return;
+
+    const viewportX = anchorX ?? viewport.clientWidth / 2;
+    const viewportY = anchorY ?? viewport.clientHeight / 2;
+    const graphX = (viewport.scrollLeft + viewportX) / previousZoom;
+    const graphY = (viewport.scrollTop + viewportY) / previousZoom;
+
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
+    window.requestAnimationFrame(() => {
+      viewport.scrollTo({
+        left: graphX * nextZoom - viewportX,
+        top: graphY * nextZoom - viewportY,
+        behavior: "auto",
+      });
+    });
+  }
+
+  function handleMapWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    setMapZoom(
+      zoomRef.current + direction * 0.08,
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    );
+  }
+
+  function handlePanStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (
+      event.button !== 0
+      || (event.target as HTMLElement).closest("button")
+    ) {
+      return;
+    }
+
+    panRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: event.currentTarget.scrollLeft,
+      scrollTop: event.currentTarget.scrollTop,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setIsPanning(true);
+  }
+
+  function handlePanMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const pan = panRef.current;
+
+    if (!pan || pan.pointerId !== event.pointerId) return;
+
+    event.currentTarget.scrollLeft =
+      pan.scrollLeft - (event.clientX - pan.startX);
+    event.currentTarget.scrollTop =
+      pan.scrollTop - (event.clientY - pan.startY);
+  }
+
+  function handlePanEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    const pan = panRef.current;
+
+    if (!pan || pan.pointerId !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    panRef.current = null;
+    setIsPanning(false);
   }
 
   function fitRelationshipWeb() {
@@ -165,7 +290,7 @@ export default function StoryModal({ onClose }: Props) {
     const nextZoom = Math.min(
       0.92,
       Math.max(
-        0.32,
+        MIN_ZOOM,
         Math.min(
           (viewport.clientWidth - 36) / story.graph.width,
           (viewport.clientHeight - 36) / story.graph.height,
@@ -174,6 +299,7 @@ export default function StoryModal({ onClose }: Props) {
     );
 
     setZoom(nextZoom);
+    zoomRef.current = nextZoom;
     window.requestAnimationFrame(() => {
       viewport.scrollTo({ left: 0, top: 0, behavior: "smooth" });
     });
@@ -247,13 +373,16 @@ export default function StoryModal({ onClose }: Props) {
                 <span><i className="is-lived" /> Прожито</span>
                 <span><i className="is-signal" /> Обнаружено</span>
                 <span><i className="is-closed" /> Неизвестно</span>
+                <span className="story-navigation-hint">
+                  Колесо — масштаб · потяни фон — перемещение
+                </span>
               </div>
 
               <div className="story-zoom">
                 <button
                   type="button"
                   aria-label="Уменьшить масштаб"
-                  onClick={() => setZoom((value) => Math.max(0.32, value - 0.1))}
+                  onClick={() => setMapZoom(zoomRef.current - 0.1)}
                 >
                   −
                 </button>
@@ -261,7 +390,7 @@ export default function StoryModal({ onClose }: Props) {
                 <button
                   type="button"
                   aria-label="Увеличить масштаб"
-                  onClick={() => setZoom((value) => Math.min(1.2, value + 0.1))}
+                  onClick={() => setMapZoom(zoomRef.current + 0.1)}
                 >
                   +
                 </button>
@@ -274,7 +403,18 @@ export default function StoryModal({ onClose }: Props) {
               </div>
             </div>
 
-            <div className="story-map-viewport" ref={mapViewportRef}>
+            <div
+              className={[
+                "story-map-viewport",
+                isPanning ? "is-panning" : "",
+              ].join(" ")}
+              ref={mapViewportRef}
+              onWheel={handleMapWheel}
+              onPointerDown={handlePanStart}
+              onPointerMove={handlePanMove}
+              onPointerUp={handlePanEnd}
+              onPointerCancel={handlePanEnd}
+            >
               <div
                 className="story-map-spacer"
                 style={{
@@ -325,9 +465,11 @@ export default function StoryModal({ onClose }: Props) {
                         "story-node",
                         `story-node--${node.status}`,
                         selectedNode?.id === node.id ? "is-selected" : "",
+                        expandedNodeId === node.id ? "is-expanded" : "",
                       ].join(" ")}
                       style={{ left: node.x, top: node.y }}
-                      onClick={() => setSelectedNodeId(node.id)}
+                      aria-expanded={expandedNodeId === node.id}
+                      onClick={() => openNode(node.id)}
                     >
                       <span className="story-node__index">
                         {String(index + 1).padStart(2, "0")}
@@ -337,6 +479,10 @@ export default function StoryModal({ onClose }: Props) {
                         <small>{node.subtitle}</small>
                       </span>
                       <i aria-hidden="true" />
+                      <span className="story-node__details">
+                        <b>{STATUS_LABELS[node.status]}</b>
+                        <span>{node.description}</span>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -345,13 +491,11 @@ export default function StoryModal({ onClose }: Props) {
 
             <div className="story-inspector">
               <section>
-                <span className="story-kicker">
-                  {selectedNode ? STATUS_LABELS[selectedNode.status] : "NODE"}
-                </span>
-                <h2>{selectedNode?.title ?? "Фрагмент не выбран"}</h2>
+                <span className="story-kicker">НАВИГАЦИЯ ПО СВЯЗИ</span>
+                <h2>Открывай узлы прямо на схеме</h2>
                 <p>
-                  {selectedNode?.description ??
-                    "Выберите узел на схеме, чтобы увидеть его состояние."}
+                  Нажми на карточку — она раскроется вместе с описанием. Колесо
+                  мыши меняет масштаб, а зажатая левая кнопка перемещает карту.
                 </p>
                 <div className="story-path-note">
                   <strong>{story.path.title}</strong>

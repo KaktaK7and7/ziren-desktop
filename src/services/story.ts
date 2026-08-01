@@ -47,7 +47,7 @@ export type MelissaStory = {
   story_mode: {
     enabled: boolean;
     label: string;
-    personality_source: "living_story";
+    personality_source: "living_story" | "persona_preset";
     character_locked: boolean;
     note: string;
   };
@@ -98,6 +98,20 @@ type StoryResponse = {
   error?: string;
 };
 
+export type PersonaPresetOption = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+type PersonaPresetsResponse = {
+  ok: boolean;
+  selected: string | null;
+  presets: PersonaPresetOption[];
+  story_mode: MelissaStory["story_mode"];
+  error?: string;
+};
+
 async function readStoryResponse(response: Response) {
   const data = await readAuthApiJson<StoryResponse>(
     response,
@@ -121,5 +135,67 @@ async function readStoryResponse(response: Response) {
 
 export async function fetchMelissaStory() {
   const response = await fetchAuthenticatedAuthApi("/api/assistant/story");
+  return readStoryResponse(response);
+}
+
+export async function updateMelissaStoryMode(enabled: boolean) {
+  const response = await fetchAuthenticatedAuthApi(
+    "/api/assistant/story/mode",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled }),
+    },
+  );
+
+  return readStoryResponse(response);
+}
+
+export async function fetchPersonaPresets() {
+  const response = await fetchAuthenticatedAuthApi(
+    "/api/assistant/persona/presets",
+  );
+  const data = await readAuthApiJson<PersonaPresetsResponse>(
+    response,
+    "Не удалось загрузить характеры компаньона",
+  );
+
+  if (!response.ok || !data.ok || !Array.isArray(data.presets)) {
+    throw new Error(
+      data.error || "Не удалось загрузить характеры компаньона",
+    );
+  }
+
+  return data;
+}
+
+export async function applyPersonaPreset(presetName: string) {
+  const response = await fetchAuthenticatedAuthApi(
+    "/api/assistant/preset",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preset_name: presetName }),
+    },
+  );
+  const data = await readAuthApiJson<{ ok?: boolean; error?: string }>(
+    response,
+    "Не удалось сохранить характер компаньона",
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      data.error || "Не удалось сохранить характер компаньона",
+    );
+  }
+
+  return data;
+}
+
+export async function resetMelissaCompanion() {
+  const response = await fetchAuthenticatedAuthApi(
+    "/api/assistant/reset",
+    { method: "POST" },
+  );
   return readStoryResponse(response);
 }

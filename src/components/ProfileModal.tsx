@@ -376,19 +376,23 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
                     className={`profile-achievement${
                       achievement.unlocked ? " unlocked" : ""
                     }`}
-                    title={`${achievement.title}: ${achievement.description}`}
                   >
-                    {achievement.unlocked ? achievement.icon : "?"}
+                    <div className="profile-achievement-icon" aria-hidden="true">
+                      {achievement.unlocked ? achievement.icon : "?"}
+                    </div>
+                    <div className="profile-achievement-copy">
+                      <strong>{achievement.title}</strong>
+                      <span>{achievement.description}</span>
+                    </div>
+                    <small>
+                      {achievement.unlocked ? "ПОЛУЧЕНО" : "НЕ ОТКРЫТО"}
+                    </small>
                   </div>
                 ))
               ) : (
-                <>
-                  <div className="profile-achievement unlocked">◇</div>
-                  <div className="profile-achievement">?</div>
-                  <div className="profile-achievement">?</div>
-                  <div className="profile-achievement">?</div>
-                  <div className="profile-achievement">?</div>
-                </>
+                <p className="profile-muted-text">
+                  Достижения появятся после синхронизации профиля.
+                </p>
               )}
             </div>
           </section>

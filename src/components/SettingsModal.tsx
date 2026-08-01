@@ -30,6 +30,15 @@ import {
   saveCompanionSettings,
   type CompanionSettings,
 } from "../services/companionSettings";
+import {
+  applyPersonaPreset,
+  fetchMelissaStory,
+  fetchPersonaPresets,
+  resetMelissaCompanion,
+  updateMelissaStoryMode,
+  type MelissaStory,
+  type PersonaPresetOption,
+} from "../services/story";
 
 import "./SettingsModal.css";
 
@@ -137,6 +146,14 @@ export default function SettingsModal({
     useState<CompanionSettings | null>(null);
   const [companionError, setCompanionError] = useState("");
   const [isSavingCompanion, setIsSavingCompanion] = useState(false);
+  const [storySettings, setStorySettings] = useState<MelissaStory | null>(null);
+  const [personaPresets, setPersonaPresets] = useState<PersonaPresetOption[]>([]);
+  const [selectedPersonaPreset, setSelectedPersonaPreset] = useState("");
+  const [storySettingsError, setStorySettingsError] = useState("");
+  const [isSavingStorySettings, setIsSavingStorySettings] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [resetConfirmed, setResetConfirmed] = useState(false);
+  const [resetStatus, setResetStatus] = useState("");
 
   const defaultsByFeatureId = useMemo(() => {
     return new Map(
@@ -212,6 +229,40 @@ export default function SettingsModal({
     }
 
     loadFeatureTriggers();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadStorySettings() {
+      try {
+        const [story, presets] = await Promise.all([
+          fetchMelissaStory(),
+          fetchPersonaPresets(),
+        ]);
+
+        if (mounted) {
+          setStorySettings(story);
+          setPersonaPresets(presets.presets);
+          setSelectedPersonaPreset(presets.selected ?? "");
+          setStorySettingsError("");
+        }
+      } catch (err) {
+        if (mounted) {
+          setStorySettingsError(
+            err instanceof Error
+              ? err.message
+              : "Не удалось загрузить режим компаньона",
+          );
+        }
+      }
+    }
+
+    void loadStorySettings();
 
     return () => {
       mounted = false;
@@ -1071,6 +1122,96 @@ export default function SettingsModal({
     }
   }
 
+  async function handleStoryModeChange(enabled: boolean) {
+    if (
+      !storySettings
+      || storySettings.story_mode.enabled === enabled
+      || isSavingStorySettings
+    ) {
+      return;
+    }
+
+    setStorySettingsError("");
+    setResetStatus("");
+    setIsSavingStorySettings(true);
+
+    try {
+      const story = await updateMelissaStoryMode(enabled);
+      setStorySettings(story);
+
+      const presets = await fetchPersonaPresets();
+      setPersonaPresets(presets.presets);
+      setSelectedPersonaPreset(presets.selected ?? "");
+    } catch (err) {
+      setStorySettingsError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось переключить режим компаньона",
+      );
+    } finally {
+      setIsSavingStorySettings(false);
+    }
+  }
+
+  async function handlePersonaPresetChange(presetName: string) {
+    if (
+      storySettings?.story_mode.enabled
+      || selectedPersonaPreset === presetName
+      || isSavingStorySettings
+    ) {
+      return;
+    }
+
+    setStorySettingsError("");
+    setIsSavingStorySettings(true);
+
+    try {
+      await applyPersonaPreset(presetName);
+      setSelectedPersonaPreset(presetName);
+    } catch (err) {
+      setStorySettingsError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось сохранить характер компаньона",
+      );
+    } finally {
+      setIsSavingStorySettings(false);
+    }
+  }
+
+  function closeResetConfirmation() {
+    setShowResetConfirmation(false);
+    setResetConfirmed(false);
+  }
+
+  async function handleResetCompanion() {
+    if (!resetConfirmed || isSavingStorySettings) {
+      return;
+    }
+
+    setStorySettingsError("");
+    setResetStatus("");
+    setIsSavingStorySettings(true);
+
+    try {
+      const story = await resetMelissaCompanion();
+      setStorySettings(story);
+      setSelectedPersonaPreset("");
+      closeResetConfirmation();
+      setResetStatus(
+        "Память, диалоги и Хроника очищены. Статистика команд и достижения сохранены.",
+      );
+    } catch (err) {
+      setStorySettingsError(
+        err instanceof Error
+          ? err.message
+          : "Не удалось начать заново",
+      );
+    } finally {
+      setIsSavingStorySettings(false);
+    }
+  }
+
   function activeSectionTitle() {
     if (activeSection === "triggers") {
       return "Триггеры функций";
@@ -1364,21 +1505,100 @@ export default function SettingsModal({
                     <article className="settings-feature-card settings-story-mode">
                       <div className="settings-feature-top">
                         <div>
-                          <h4>Живой сюжет и характер Мелиссы</h4>
+                          <h4>Режим компаньона</h4>
                           <span>
-                            Включён по умолчанию. Характер задаётся историей и
-                            меняется через доверие, близость, самостоятельность
-                            и осторожность. Старые пресеты тона в этом режиме
-                            не переопределяют Мелиссу.
+                            Это два разных способа общения. Переключение не
+                            удаляет прогресс Хроники: в обычном режиме история
+                            просто приостанавливается.
                           </span>
                         </div>
                         <strong className="settings-companion-status">
-                          LIVING STORY · ACTIVE
+                          {!storySettings
+                            ? "LOADING"
+                            : storySettings.story_mode.enabled
+                              ? "LIVING STORY"
+                              : "FREE COMPANION"}
                         </strong>
                       </div>
+
+                      {storySettingsError && (
+                        <div className="settings-inline-error">
+                          {storySettingsError}
+                        </div>
+                      )}
+
+                      <div
+                        className="settings-mode-picker"
+                        role="group"
+                        aria-label="Режим компаньона"
+                      >
+                        <button
+                          type="button"
+                          className={
+                            storySettings?.story_mode.enabled
+                              ? "is-selected"
+                              : ""
+                          }
+                          disabled={!storySettings || isSavingStorySettings}
+                          onClick={() => void handleStoryModeChange(true)}
+                        >
+                          <strong>Живая история</strong>
+                          <span>
+                            Мелисса остаётся девушкой из своей истории, а
+                            характер меняется через ваши отношения и решения.
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={
+                            storySettings && !storySettings.story_mode.enabled
+                              ? "is-selected"
+                              : ""
+                          }
+                          disabled={!storySettings || isSavingStorySettings}
+                          onClick={() => void handleStoryModeChange(false)}
+                        >
+                          <strong>Обычный компаньон</strong>
+                          <span>
+                            Свободное общение без сюжетной роли. Манеру речи
+                            можно выбрать отдельно.
+                          </span>
+                        </button>
+                      </div>
+
+                      {storySettings && !storySettings.story_mode.enabled && (
+                        <div className="settings-persona-picker">
+                          <span>ХАРАКТЕР ОБЩЕНИЯ</span>
+                          <div>
+                            {personaPresets.map((preset) => (
+                              <button
+                                type="button"
+                                key={preset.id}
+                                className={
+                                  selectedPersonaPreset === preset.id
+                                    ? "is-selected"
+                                    : ""
+                                }
+                                title={preset.description}
+                                disabled={isSavingStorySettings}
+                                onClick={() =>
+                                  void handlePersonaPresetChange(preset.id)
+                                }
+                              >
+                                {preset.title}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="settings-story-mode__rule">
-                        <span>PERSONALITY SOURCE</span>
-                        <strong>Прожитые решения и состояние связи</strong>
+                        <span>СЕЙЧАС АКТИВНО</span>
+                        <strong>
+                          {storySettings?.story_mode.note
+                            || "Загрузка режима компаньона..."}
+                        </strong>
                       </div>
                     </article>
 
@@ -1396,6 +1616,24 @@ export default function SettingsModal({
                         </div>
                         <strong className="settings-companion-status">
                           SAFE LOCAL ROUTING
+                        </strong>
+                      </div>
+                    </article>
+
+                    <article className="settings-feature-card">
+                      <div className="settings-feature-top">
+                        <div>
+                          <h4>Помощь по экрану</h4>
+                          <span>
+                            Скажи Мелиссе: «что у меня на экране» или
+                            «посмотри на экран и помоги разобраться». Ziren
+                            сделает один снимок основного экрана, передаст его
+                            только для ответа на этот вопрос и не добавит
+                            изображение в память.
+                          </span>
+                        </div>
+                        <strong className="settings-companion-status">
+                          ONLY ON REQUEST
                         </strong>
                       </div>
                     </article>
@@ -1609,6 +1847,79 @@ export default function SettingsModal({
 
                       {isSavingCompanion && (
                         <span className="settings-saving-label">SAVING...</span>
+                      )}
+                    </article>
+
+                    <article className="settings-feature-card settings-reset-card">
+                      <div className="settings-feature-top">
+                        <div>
+                          <h4>Начать заново</h4>
+                          <span>
+                            Удаляет память, историю диалогов, выбранное имя и
+                            весь прогресс Хроники связи. Аккаунт, статистика
+                            команд и достижения останутся.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="settings-danger-button"
+                          disabled={isSavingStorySettings}
+                          onClick={() => {
+                            setShowResetConfirmation(true);
+                            setResetStatus("");
+                          }}
+                        >
+                          Начать заново
+                        </button>
+                      </div>
+
+                      {resetStatus && (
+                        <div className="settings-reset-status">
+                          {resetStatus}
+                        </div>
+                      )}
+
+                      {showResetConfirmation && (
+                        <div className="settings-reset-confirmation">
+                          <strong>
+                            Точно хотите начать заново и всё стереть?
+                          </strong>
+                          <p>
+                            Это действие нельзя отменить. Резервная копия
+                            личной истории пользователя не создаётся.
+                          </p>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={resetConfirmed}
+                              onChange={(event) =>
+                                setResetConfirmed(event.target.checked)
+                              }
+                            />
+                            <span>
+                              Я понимаю, что память и Хронику восстановить
+                              будет нельзя.
+                            </span>
+                          </label>
+                          <div>
+                            <button
+                              type="button"
+                              disabled={
+                                !resetConfirmed || isSavingStorySettings
+                              }
+                              onClick={() => void handleResetCompanion()}
+                            >
+                              Да, стереть и начать заново
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSavingStorySettings}
+                              onClick={closeResetConfirmation}
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </article>
                   </>

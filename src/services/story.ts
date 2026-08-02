@@ -17,6 +17,21 @@ export type StoryPrompt = {
   quote: string;
 };
 
+export type StoryGuidance = {
+  status: "active" | "open_world";
+  step: number;
+  total_steps: number;
+  title: string;
+  objective: string;
+  why: string;
+  suggestions: string[];
+  completion_rule: string;
+  melissa_move?: string;
+  melissa_leads: boolean;
+  stalled: boolean;
+  turns_since_progress: number;
+};
+
 export type StoryNode = {
   id: string;
   type:
@@ -82,6 +97,7 @@ export type MelissaStory = {
     next_prompt: StoryPrompt | null;
     interaction_mode: "dialogue";
   };
+  guidance?: StoryGuidance;
   choices: Record<string, string>;
   current_node_id: string;
   graph: {

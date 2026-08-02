@@ -25,6 +25,8 @@ const EXPANDED_NODE_WIDTH = 360;
 const EXPANDED_NODE_HEIGHT = 176;
 const MIN_ZOOM = 0.18;
 const MAX_ZOOM = 1.2;
+const MAP_PADDING = 240;
+const FOCUS_ZOOM = 0.82;
 
 const STATUS_LABELS: Record<StoryNode["status"], string> = {
   active: "разговор продолжается",
@@ -51,10 +53,10 @@ function clampZoom(value: number) {
 }
 
 function connectorPath(parent: StoryNode, child: StoryNode) {
-  const startX = parent.x + NODE_WIDTH;
-  const startY = parent.y + NODE_HEIGHT / 2;
-  const endX = child.x;
-  const endY = child.y + NODE_HEIGHT / 2;
+  const startX = parent.x + MAP_PADDING + NODE_WIDTH;
+  const startY = parent.y + MAP_PADDING + NODE_HEIGHT / 2;
+  const endX = child.x + MAP_PADDING;
+  const endY = child.y + MAP_PADDING + NODE_HEIGHT / 2;
   const bend = Math.max(44, (endX - startX) * 0.46);
 
   return [
@@ -102,6 +104,22 @@ export default function StoryModal({ onClose }: Props) {
     nodeById.get(story?.current_node_id ?? "") ??
     story?.nodes[0] ??
     null;
+
+  const guidance = story?.guidance ?? {
+    status: "active" as const,
+    step: story?.prologue.step || 1,
+    total_steps: story?.prologue.total_steps || 4,
+    title: "Продолжите текущий разговор",
+    objective:
+      story?.dialogue.next_prompt?.prompt
+      || "Говорите с компаньоном своими словами — решение сохранится в Хронике.",
+    why: "Специальная команда или выбор карточки не требуется.",
+    suggestions: ["Спросить, что она предлагает сделать дальше"],
+    completion_rule: "Ответьте своими словами в обычном диалоге.",
+    melissa_leads: true,
+    stalled: false,
+    turns_since_progress: 0,
+  };
 
   async function loadStory(showLoading = false) {
     try {
@@ -170,10 +188,10 @@ export default function StoryModal({ onClose }: Props) {
 
     viewport.scrollTo({
       left:
-        (node.x + nodeWidth / 2) * zoomRef.current
+        (node.x + MAP_PADDING + nodeWidth / 2) * zoomRef.current
         - viewport.clientWidth / 2,
       top:
-        (node.y + nodeHeight / 2) * zoomRef.current
+        (node.y + MAP_PADDING + nodeHeight / 2) * zoomRef.current
         - viewport.clientHeight / 2,
       behavior,
     });
@@ -182,9 +200,15 @@ export default function StoryModal({ onClose }: Props) {
   function focusCurrentNode() {
     if (!story) return;
 
+    const nextZoom = Math.max(zoomRef.current, FOCUS_ZOOM);
+
+    zoomRef.current = nextZoom;
+    setZoom(nextZoom);
     setSelectedNodeId(story.current_node_id);
     setExpandedNodeId(story.current_node_id);
-    scrollToNode(story.current_node_id, "smooth", true);
+    window.requestAnimationFrame(() => {
+      scrollToNode(story.current_node_id, "smooth", true);
+    });
   }
 
   function openNode(nodeId: string) {
@@ -292,8 +316,8 @@ export default function StoryModal({ onClose }: Props) {
       Math.max(
         MIN_ZOOM,
         Math.min(
-          (viewport.clientWidth - 36) / story.graph.width,
-          (viewport.clientHeight - 36) / story.graph.height,
+          (viewport.clientWidth - 36) / (story.graph.width + MAP_PADDING * 2),
+          (viewport.clientHeight - 36) / (story.graph.height + MAP_PADDING * 2),
         ),
       ),
     );
@@ -367,6 +391,42 @@ export default function StoryModal({ onClose }: Props) {
               </div>
             </div>
 
+            <section
+              className={[
+                "story-guidance-panel",
+                guidance.stalled ? "is-stalled" : "",
+              ].join(" ")}
+            >
+              <div className="story-guidance-panel__heading">
+                <span className="story-kicker">
+                  {guidance.status === "open_world"
+                    ? "СВОБОДНОЕ РАЗВИТИЕ"
+                    : `ШАГ ${guidance.step} ИЗ ${guidance.total_steps}`}
+                </span>
+                <h2>{guidance.title}</h2>
+                <small>{guidance.completion_rule}</small>
+              </div>
+              <div className="story-guidance-panel__objective">
+                <strong>Что делать сейчас</strong>
+                <p>{guidance.objective}</p>
+                <small>{guidance.why}</small>
+              </div>
+              <div className="story-guidance-panel__suggestions">
+                <strong>Можно начать своими словами</strong>
+                <ul>
+                  {guidance.suggestions.map((suggestion) => (
+                    <li key={suggestion}>{suggestion}</li>
+                  ))}
+                </ul>
+              </div>
+              {guidance.stalled && (
+                <div className="story-guidance-panel__alert">
+                  Связь застыла. Теперь {story.companion_name} должна сама
+                  предложить действие, потребовать решение или возразить.
+                </div>
+              )}
+            </section>
+
             <div className="story-toolbar">
               <div className="story-legend" aria-label="Легенда">
                 <span><i className="is-current" /> Текущий момент</span>
@@ -418,22 +478,22 @@ export default function StoryModal({ onClose }: Props) {
               <div
                 className="story-map-spacer"
                 style={{
-                  width: story.graph.width * zoom,
-                  height: story.graph.height * zoom,
+                  width: (story.graph.width + MAP_PADDING * 2) * zoom,
+                  height: (story.graph.height + MAP_PADDING * 2) * zoom,
                 }}
               >
                 <div
                   className="story-graph"
                   style={{
-                    width: story.graph.width,
-                    height: story.graph.height,
+                    width: story.graph.width + MAP_PADDING * 2,
+                    height: story.graph.height + MAP_PADDING * 2,
                     transform: `scale(${zoom})`,
                   }}
                 >
                   <svg
                     className="story-connectors"
-                    width={story.graph.width}
-                    height={story.graph.height}
+                    width={story.graph.width + MAP_PADDING * 2}
+                    height={story.graph.height + MAP_PADDING * 2}
                     aria-hidden="true"
                   >
                     {story.nodes.flatMap((node) =>
@@ -467,7 +527,10 @@ export default function StoryModal({ onClose }: Props) {
                         selectedNode?.id === node.id ? "is-selected" : "",
                         expandedNodeId === node.id ? "is-expanded" : "",
                       ].join(" ")}
-                      style={{ left: node.x, top: node.y }}
+                      style={{
+                        left: node.x + MAP_PADDING,
+                        top: node.y + MAP_PADDING,
+                      }}
                       aria-expanded={expandedNodeId === node.id}
                       onClick={() => openNode(node.id)}
                     >
@@ -491,11 +554,11 @@ export default function StoryModal({ onClose }: Props) {
 
             <div className="story-inspector">
               <section>
-                <span className="story-kicker">НАВИГАЦИЯ ПО СВЯЗИ</span>
-                <h2>Открывай узлы прямо на схеме</h2>
+                <span className="story-kicker">ТЕКУЩАЯ НИТЬ</span>
+                <h2>{guidance.title}</h2>
                 <p>
-                  Нажми на карточку — она раскроется вместе с описанием. Колесо
-                  мыши меняет масштаб, а зажатая левая кнопка перемещает карту.
+                  {guidance.objective} Решение принимается в обычном
+                  разговоре — специальная фраза или кнопка не нужна.
                 </p>
                 <div className="story-path-note">
                   <strong>{story.path.title}</strong>

@@ -286,7 +286,8 @@ input {
 }
 
 .settings-button,
-.story-button {
+.story-button,
+.drawing-button {
   position: relative;
   z-index: 51;
   height: 44px;
@@ -305,7 +306,8 @@ input {
   font-size: 21px;
 }
 
-.story-button {
+.story-button,
+.drawing-button {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -316,15 +318,137 @@ input {
   letter-spacing: 0.04em;
 }
 
-.story-button span {
+.story-button span,
+.drawing-button span {
   color: #72e4d6;
   font-size: 19px;
 }
 
 .settings-button:hover,
-.story-button:hover {
+.story-button:hover,
+.drawing-button:hover {
   border-color: rgba(0, 245, 255, 0.65);
   box-shadow: 0 0 24px rgba(0, 245, 255, 0.24);
+}
+
+.drawing-button {
+  position: relative;
+}
+
+.drawing-button b {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 999px;
+  color: #071012;
+  background: #f0b24d;
+  box-shadow: 0 0 13px rgba(240, 178, 77, 0.66);
+  font-size: 10px;
+}
+
+.drawing-notice {
+  position: fixed;
+  top: 76px;
+  right: 18px;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  width: min(390px, calc(100vw - 36px));
+  overflow: hidden;
+  border: 1px solid rgba(111, 225, 213, 0.42);
+  border-radius: 15px;
+  color: #e9f7f5;
+  background:
+    linear-gradient(110deg, rgba(31, 92, 84, 0.38), transparent 62%),
+    rgba(5, 12, 15, 0.96);
+  box-shadow:
+    0 22px 65px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(111, 225, 213, 0.16);
+  backdrop-filter: blur(18px);
+  animation: drawing-notice-in 0.24s ease-out;
+}
+
+.drawing-notice.is-error {
+  border-color: rgba(255, 102, 127, 0.48);
+  background: rgba(38, 8, 16, 0.96);
+}
+
+.drawing-notice.is-working {
+  border-color: rgba(240, 178, 77, 0.42);
+}
+
+.drawing-notice__body,
+.drawing-notice__close {
+  border: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.drawing-notice__body {
+  display: grid;
+  gap: 4px;
+  padding: 14px 9px 14px 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.drawing-notice__body:disabled {
+  cursor: default;
+}
+
+.drawing-notice__body > span {
+  color: #6fe1d5;
+  font: 800 9px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.12em;
+}
+
+.drawing-notice.is-working .drawing-notice__body > span {
+  color: #f0b24d;
+}
+
+.drawing-notice.is-error .drawing-notice__body > span {
+  color: #ff8197;
+}
+
+.drawing-notice__body strong {
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawing-notice__body small {
+  color: #96a8aa;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.drawing-notice__close {
+  align-self: start;
+  height: 38px;
+  color: #758789;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.drawing-notice__close:hover {
+  color: #fff;
+}
+
+@keyframes drawing-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .profile-button {

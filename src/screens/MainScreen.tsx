@@ -9,6 +9,7 @@ import ListeningToggle from "../components/ListeningToggle";
 import CyberPsychoBackground from "../components/CyberPsychoBackground";
 import ProfileModal from "../components/ProfileModal";
 import StoryModal from "../components/StoryModal";
+import DrawingModal from "../components/DrawingModal";
 
 import {
   getAssistantStatus,
@@ -39,6 +40,13 @@ type AssistantUiState =
   | "listening"
   | "thinking"
   | "speaking";
+
+type DrawingNotice = {
+  status: "working" | "ready" | "error";
+  drawingId?: string;
+  title: string;
+  message: string;
+};
 
 function formatApiLog(log: AssistantApiLog): string {
   const time = log.ts
@@ -88,6 +96,18 @@ export default function MainScreen({
 
   const [isStoryOpen, setIsStoryOpen] =
     useState(false);
+
+  const [isDrawingOpen, setIsDrawingOpen] =
+    useState(false);
+
+  const [drawingInitialId, setDrawingInitialId] =
+    useState("");
+
+  const [drawingNotice, setDrawingNotice] =
+    useState<DrawingNotice | null>(null);
+
+  const [unreadDrawingCount, setUnreadDrawingCount] =
+    useState(0);
 
   const [settingsInitialSection, setSettingsInitialSection] =
     useState("triggers");
@@ -362,6 +382,60 @@ export default function MainScreen({
           addGuiLog("[APP LAUNCHER] Add missing app alias");
           break;
         }
+
+        case "drawing.generation.started": {
+          const title =
+            typeof event.payload.title === "string"
+              ? event.payload.title
+              : "Новый набросок";
+          setDrawingNotice({
+            status: "working",
+            title,
+            message: "Мелисса рисует. Можно продолжать разговор — Холст работает в фоне.",
+          });
+          addGuiLog("[DRAWING] Started: " + title);
+          break;
+        }
+
+        case "drawing.created": {
+          const drawingId =
+            typeof event.payload.id === "string"
+              ? event.payload.id
+              : "";
+          const title =
+            typeof event.payload.title === "string"
+              ? event.payload.title
+              : "Новый набросок";
+          const completionLine =
+            typeof event.payload.completion_line === "string"
+              ? event.payload.completion_line
+              : "";
+          setDrawingNotice({
+            status: "ready",
+            drawingId,
+            title,
+            message:
+              completionLine
+              || "Мелисса нарисовала кое-что. Открой Холст и посмотри.",
+          });
+          setUnreadDrawingCount((current) => current + 1);
+          addGuiLog("[DRAWING] Saved locally: " + title);
+          break;
+        }
+
+        case "drawing.generation.failed": {
+          const title =
+            typeof event.payload.title === "string"
+              ? event.payload.title
+              : "Набросок";
+          setDrawingNotice({
+            status: "error",
+            title,
+            message: "Рисунок не завершён. Проверь подключение и попробуй попросить ещё раз.",
+          });
+          addGuiLog("[DRAWING] Failed: " + title);
+          break;
+        }
       }
     }
 
@@ -485,6 +559,14 @@ export default function MainScreen({
     setIsStoryOpen(true);
   }
 
+  function openDrawingLibrary(drawingId = "") {
+    addGuiLog("[DRAWING] Canvas opened");
+    setDrawingInitialId(drawingId);
+    setUnreadDrawingCount(0);
+    setDrawingNotice(null);
+    setIsDrawingOpen(true);
+  }
+
   async function handleListeningToggle() {
     if (isLoading) return;
 
@@ -550,6 +632,18 @@ export default function MainScreen({
           <span>⌁</span>
           Хроника
         </button>
+        <button
+          className="drawing-button"
+          type="button"
+          title="Холст Мелиссы"
+          onClick={() => openDrawingLibrary()}
+        >
+          <span>✎</span>
+          Холст
+          {unreadDrawingCount > 0 && (
+            <b>{Math.min(unreadDrawingCount, 9)}</b>
+          )}
+        </button>
       </div>
 
       <button
@@ -574,6 +668,43 @@ export default function MainScreen({
 
       <LogTerminal logs={logs} />
 
+      {drawingNotice && (
+        <div
+          className={[
+            "drawing-notice",
+            "is-" + drawingNotice.status,
+          ].join(" ")}
+          role="status"
+        >
+          <button
+            className="drawing-notice__body"
+            type="button"
+            disabled={!drawingNotice.drawingId}
+            onClick={() =>
+              openDrawingLibrary(drawingNotice.drawingId ?? "")
+            }
+          >
+            <span>
+              {drawingNotice.status === "working"
+                ? "РИСУНОК В РАБОТЕ"
+                : drawingNotice.status === "ready"
+                ? "МЕЛИССА НАРИСОВАЛА КОЕ-ЧТО"
+                : "РИСУНОК НЕ ЗАВЕРШЁН"}
+            </span>
+            <strong>{drawingNotice.title}</strong>
+            <small>{drawingNotice.message}</small>
+          </button>
+          <button
+            className="drawing-notice__close"
+            type="button"
+            aria-label="Закрыть уведомление"
+            onClick={() => setDrawingNotice(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {isProfileOpen && (
         <ProfileModal
           onClose={() => setIsProfileOpen(false)}
@@ -593,6 +724,16 @@ export default function MainScreen({
       {isStoryOpen && (
         <StoryModal
           onClose={() => setIsStoryOpen(false)}
+        />
+      )}
+
+      {isDrawingOpen && (
+        <DrawingModal
+          initialDrawingId={drawingInitialId}
+          onClose={() => {
+            setIsDrawingOpen(false);
+            setDrawingInitialId("");
+          }}
         />
       )}
     </div>

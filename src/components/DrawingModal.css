@@ -243,6 +243,7 @@
   color: #9cadb0;
   font-size: 12px;
   line-height: 1.65;
+  white-space: pre-line;
 }
 
 .drawing-concept-warning {

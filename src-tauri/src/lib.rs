@@ -208,10 +208,10 @@ fn fit_screen_overlay_to_primary_monitor(app: &AppHandle) -> Result<(), String> 
     let size = monitor.size();
 
     window
-        .set_position(PhysicalPosition::new(position.x - 8, position.y - 8))
+        .set_position(PhysicalPosition::new(position.x, position.y))
         .map_err(|error| error.to_string())?;
     window
-        .set_size(PhysicalSize::new(size.width + 16, size.height + 16))
+        .set_size(PhysicalSize::new(size.width, size.height))
         .map_err(|error| error.to_string())?;
 
     Ok(())
@@ -224,6 +224,12 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "screen-overlay window not found".to_string())?;
 
     let _ = fit_screen_overlay_to_primary_monitor(&app);
+    let _ = window.emit(
+        "screen-overlay-mode",
+        serde_json::json!({
+            "mode": "listening"
+        }),
+    );
 
     let _ = window.set_ignore_cursor_events(true);
     let _ = window.set_focusable(false);
@@ -245,9 +251,71 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn show_screen_capture_overlay(app: AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("screen-overlay")
+        .ok_or_else(|| "screen-overlay window not found".to_string())?;
+
+    let _ = fit_screen_overlay_to_primary_monitor(&app);
+    let _ = window.emit(
+        "screen-overlay-mode",
+        serde_json::json!({
+            "mode": "capture"
+        }),
+    );
+    let _ = window.set_ignore_cursor_events(true);
+    let _ = window.set_focusable(false);
+    let _ = window.hide();
+    std::thread::sleep(std::time::Duration::from_millis(16));
+    window.show().map_err(|error| error.to_string())?;
+    let _ = window.unminimize();
+    window
+        .set_always_on_top(true)
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn show_screen_guidance_overlay(app: AppHandle, payload: serde_json::Value) -> Result<(), String> {
+    let window = app
+        .get_webview_window("screen-overlay")
+        .ok_or_else(|| "screen-overlay window not found".to_string())?;
+
+    let _ = fit_screen_overlay_to_primary_monitor(&app);
+    window
+        .emit("screen-guidance-show", payload)
+        .map_err(|error| error.to_string())?;
+    let _ = window.set_ignore_cursor_events(false);
+    let _ = window.set_focusable(true);
+    let _ = window.hide();
+    std::thread::sleep(std::time::Duration::from_millis(16));
+    window.show().map_err(|error| error.to_string())?;
+    let _ = window.unminimize();
+    window
+        .set_always_on_top(true)
+        .map_err(|error| error.to_string())?;
+    let _ = window.set_focus();
+    Ok(())
+}
+
+#[tauri::command]
+fn dispatch_screen_guidance_action(
+    app: AppHandle,
+    payload: serde_json::Value,
+) -> Result<(), String> {
+    let main = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    main.emit("screen-guidance-action", payload)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn hide_listening_overlay(app: AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("screen-overlay") {
         let _ = window.set_always_on_top(false);
+        let _ = window.set_ignore_cursor_events(true);
+        let _ = window.set_focusable(false);
 
         window.hide().map_err(|error| error.to_string())?;
     }
@@ -305,6 +373,9 @@ pub fn run() {
             tray_menu_hide,
             tray_exit,
             show_listening_overlay,
+            show_screen_capture_overlay,
+            show_screen_guidance_overlay,
+            dispatch_screen_guidance_action,
             hide_listening_overlay
         ])
         .setup(|app| {

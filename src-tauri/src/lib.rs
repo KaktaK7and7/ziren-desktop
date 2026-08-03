@@ -224,9 +224,12 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "screen-overlay window not found".to_string())?;
 
     let _ = fit_screen_overlay_to_primary_monitor(&app);
-    let _ = window.emit("screen-overlay-mode", serde_json::json!({
-        "mode": "listening"
-    }));
+    let _ = window.emit(
+        "screen-overlay-mode",
+        serde_json::json!({
+            "mode": "listening"
+        }),
+    );
 
     let _ = window.set_ignore_cursor_events(true);
     let _ = window.set_focusable(false);
@@ -254,9 +257,12 @@ fn show_screen_capture_overlay(app: AppHandle) -> Result<(), String> {
         .ok_or_else(|| "screen-overlay window not found".to_string())?;
 
     let _ = fit_screen_overlay_to_primary_monitor(&app);
-    let _ = window.emit("screen-overlay-mode", serde_json::json!({
-        "mode": "capture"
-    }));
+    let _ = window.emit(
+        "screen-overlay-mode",
+        serde_json::json!({
+            "mode": "capture"
+        }),
+    );
     let _ = window.set_ignore_cursor_events(true);
     let _ = window.set_focusable(false);
     let _ = window.hide();
@@ -270,10 +276,7 @@ fn show_screen_capture_overlay(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn show_screen_guidance_overlay(
-    app: AppHandle,
-    payload: serde_json::Value,
-) -> Result<(), String> {
+fn show_screen_guidance_overlay(app: AppHandle, payload: serde_json::Value) -> Result<(), String> {
     let window = app
         .get_webview_window("screen-overlay")
         .ok_or_else(|| "screen-overlay window not found".to_string())?;
@@ -303,8 +306,7 @@ fn dispatch_screen_guidance_action(
     let main = app
         .get_webview_window("main")
         .ok_or_else(|| "main window not found".to_string())?;
-    main
-        .emit("screen-guidance-action", payload)
+    main.emit("screen-guidance-action", payload)
         .map_err(|error| error.to_string())
 }
 

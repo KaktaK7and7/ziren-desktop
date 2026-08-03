@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "screen-overlay",
+  "description": "Capability for the interactive screen guidance overlay",
+  "windows": ["screen-overlay"],
+  "permissions": [
+    "core:default"
+  ]
+}

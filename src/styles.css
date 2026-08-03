@@ -451,6 +451,65 @@ input {
   }
 }
 
+.screen-notice {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: min(520px, calc(100vw - 36px));
+  padding: 13px 14px 13px 16px;
+  transform: translateX(-50%);
+  color: #eafcff;
+  border: 1px solid rgba(0, 229, 255, 0.42);
+  border-radius: 14px;
+  background: rgba(2, 10, 16, 0.95);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.42);
+  animation: drawing-notice-in 0.24s ease-out;
+}
+
+.screen-notice.is-success {
+  border-color: rgba(87, 242, 193, 0.62);
+}
+
+.screen-notice.is-error {
+  border-color: rgba(255, 103, 137, 0.66);
+}
+
+.screen-notice > div {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.screen-notice span {
+  color: #00e5ff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.screen-notice strong {
+  font-size: 14px;
+}
+
+.screen-notice small {
+  color: #91a8ad;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.screen-notice > button {
+  padding: 0 3px;
+  color: #91a8ad;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 21px;
+}
+
 .profile-button {
   position: absolute;
   top: 18px;
@@ -804,6 +863,307 @@ input {
     linear-gradient(to bottom, rgba(0, 245, 255, 0.38), transparent 22px) top / 100% 22px no-repeat,
     linear-gradient(to top, rgba(0, 245, 255, 0.38), transparent 22px) bottom / 100% 22px no-repeat;
   animation: screenOverlayPulse 2.2s ease-in-out infinite;
+}
+
+.screen-overlay--capture {
+  display: grid;
+  place-items: start center;
+}
+
+.screen-capture-indicator {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 12px 18px;
+  color: #eaffff;
+  border: 1px solid rgba(0, 229, 255, 0.58);
+  border-radius: 14px;
+  background: rgba(3, 11, 17, 0.92);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 229, 255, 0.12);
+  font-family: "Rajdhani", "Segoe UI", sans-serif;
+}
+
+.screen-capture-indicator__eye {
+  color: #00e5ff;
+  font-size: 25px;
+  animation: screenCaptureEye 1.2s ease-in-out infinite;
+}
+
+.screen-capture-indicator div {
+  display: grid;
+  gap: 2px;
+}
+
+.screen-capture-indicator strong {
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.screen-capture-indicator small {
+  color: #8ba6ad;
+  font-size: 12px;
+}
+
+@keyframes screenCaptureEye {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.screen-overlay--guidance {
+  pointer-events: auto;
+  font-family: "Rajdhani", "Segoe UI", sans-serif;
+}
+
+.screen-guidance-privacy {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  z-index: 20;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  color: #b9ced3;
+  border: 1px solid rgba(0, 229, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(2, 9, 14, 0.9);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.screen-guidance-privacy span {
+  color: #57f2c1;
+  margin-right: 7px;
+}
+
+.screen-guidance-annotations {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.screen-guidance-annotation {
+  --annotation-color: #00e5ff;
+  position: absolute;
+  min-width: 20px;
+  min-height: 20px;
+  border: 3px solid var(--annotation-color);
+  border-radius: 9px;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.55),
+    0 0 24px color-mix(in srgb, var(--annotation-color) 45%, transparent);
+  background: color-mix(in srgb, var(--annotation-color) 8%, transparent);
+  animation: screenGuidanceTargetIn 0.3s ease-out both;
+}
+
+.screen-guidance-annotation.is-step { --annotation-color: #57f2c1; }
+.screen-guidance-annotation.is-text { --annotation-color: #9b8cff; }
+.screen-guidance-annotation.is-warning { --annotation-color: #ffb84d; }
+
+.screen-guidance-annotation > span {
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #031014;
+  border: 2px solid #031014;
+  border-radius: 50%;
+  background: var(--annotation-color);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--annotation-color) 60%, transparent);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.screen-guidance-annotation::before {
+  content: "";
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  height: 26px;
+  border-left: 2px solid var(--annotation-color);
+  filter: drop-shadow(0 0 5px var(--annotation-color));
+}
+
+.screen-guidance-annotation::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: calc(50% - 5px);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid var(--annotation-color);
+}
+
+.screen-guidance-annotation > strong {
+  position: absolute;
+  left: 20px;
+  top: -16px;
+  max-width: min(280px, 42vw);
+  padding: 5px 9px;
+  overflow: hidden;
+  color: #f2ffff;
+  border: 1px solid color-mix(in srgb, var(--annotation-color) 55%, transparent);
+  border-radius: 6px;
+  background: rgba(2, 9, 14, 0.92);
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes screenGuidanceTargetIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.screen-guidance-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  width: min(480px, calc(100vw - 48px));
+  max-height: min(68vh, 650px);
+  overflow: auto;
+  color: #eaf9fb;
+  border: 1px solid rgba(0, 229, 255, 0.44);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(2, 13, 19, 0.97), rgba(7, 8, 18, 0.96));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 36px rgba(0, 229, 255, 0.12);
+  pointer-events: auto;
+}
+
+.screen-guidance-panel header,
+.screen-guidance-panel footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.screen-guidance-panel header {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.18);
+}
+
+.screen-guidance-panel header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.screen-guidance-panel header span {
+  color: #00e5ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.screen-guidance-panel header strong {
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.screen-guidance-panel header button {
+  width: 36px;
+  height: 36px;
+  color: #dffcff;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 9px;
+  background: rgba(0, 229, 255, 0.07);
+  cursor: pointer;
+  font-size: 23px;
+}
+
+.screen-guidance-panel > p {
+  margin: 0;
+  padding: 17px 18px 12px;
+  color: #d6e5e8;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.48;
+  white-space: pre-line;
+}
+
+.screen-guidance-panel ol {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 4px 18px 14px;
+  list-style: none;
+}
+
+.screen-guidance-panel li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #a9bec3;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.screen-guidance-panel li span {
+  display: grid;
+  place-items: center;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
+  color: #061014;
+  border-radius: 50%;
+  background: #57f2c1;
+  font-size: 11px;
+}
+
+.screen-guidance-warning {
+  margin: 0 18px 14px;
+  padding: 10px 12px;
+  color: #ffd79a;
+  border-left: 3px solid #ffb84d;
+  background: rgba(255, 184, 77, 0.08);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.screen-guidance-panel footer {
+  justify-content: flex-end;
+  padding: 14px 18px 17px;
+  border-top: 1px solid rgba(0, 229, 255, 0.14);
+}
+
+.screen-guidance-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.screen-guidance-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.screen-guidance-button.is-secondary {
+  color: #bfeef2;
+  border: 1px solid rgba(0, 229, 255, 0.36);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+.screen-guidance-button.is-confirm {
+  color: #031014;
+  border: 1px solid #57f2c1;
+  background: #57f2c1;
+  box-shadow: 0 0 20px rgba(87, 242, 193, 0.18);
 }
 
 @keyframes screenOverlayPulse {

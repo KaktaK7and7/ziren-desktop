@@ -18,6 +18,7 @@ const KIND_LABELS: Record<MelissaDrawing["kind"], string> = {
   sketch: "Свободный набросок",
   technical: "Технический концепт",
   story: "Фрагмент связи",
+  screen: "Разбор экрана",
 };
 
 
@@ -190,7 +191,11 @@ export default function DrawingModal({
                   )}
 
                   <div className="drawing-description">
-                    <span>Замысел</span>
+                    <span>
+                      {selectedDrawing.kind === "screen"
+                        ? "Ответ и отметки"
+                        : "Замысел"}
+                    </span>
                     <p>{selectedDrawing.description}</p>
                   </div>
 

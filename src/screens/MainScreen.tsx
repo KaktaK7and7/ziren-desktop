@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 import LogoOrb from "../components/LogoOrb";
 import LogTerminal from "../components/LogTerminal";
@@ -23,6 +24,13 @@ import {
 
 import { getCurrentUser } from "../services/session";
 import { fetchAssistantApi } from "../services/localApi";
+import {
+  confirmScreenClick,
+  dismissScreenGuidance,
+  saveScreenToCanvas,
+  type ScreenGuidance,
+  type ScreenGuidanceAction,
+} from "../services/screenGuidance";
 
 type Props = {
   onLogout: () => void;
@@ -44,6 +52,12 @@ type AssistantUiState =
 type DrawingNotice = {
   status: "working" | "ready" | "error";
   drawingId?: string;
+  title: string;
+  message: string;
+};
+
+type ScreenNotice = {
+  status: "info" | "success" | "error";
   title: string;
   message: string;
 };
@@ -109,6 +123,9 @@ export default function MainScreen({
   const [unreadDrawingCount, setUnreadDrawingCount] =
     useState(0);
 
+  const [screenNotice, setScreenNotice] =
+    useState<ScreenNotice | null>(null);
+
   const [settingsInitialSection, setSettingsInitialSection] =
     useState("triggers");
 
@@ -128,6 +145,8 @@ export default function MainScreen({
     useRef<Set<string>>(new Set());
   const overlayHideTimeoutRef =
     useRef<number | null>(null);
+  const overlayCommandQueueRef =
+    useRef<Promise<void>>(Promise.resolve());
 
   const logs = [
     ...guiLogs,
@@ -144,6 +163,19 @@ export default function MainScreen({
     ]);
   }
 
+  function queueOverlayCommand(
+    command: string,
+    args?: Record<string, unknown>,
+  ) {
+    const next = overlayCommandQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        await invoke(command, args);
+      });
+    overlayCommandQueueRef.current = next;
+    return next;
+  }
+
   async function showScreenOverlay() {
     if (overlayHideTimeoutRef.current !== null) {
       window.clearTimeout(overlayHideTimeoutRef.current);
@@ -153,7 +185,7 @@ export default function MainScreen({
     setIsListeningOverlayActive(true);
 
     try {
-      await invoke("show_listening_overlay");
+      await queueOverlayCommand("show_listening_overlay");
     } catch (error) {
       console.error("Failed to show screen overlay:", error);
     }
@@ -168,7 +200,7 @@ export default function MainScreen({
     setIsListeningOverlayActive(false);
 
     try {
-      await invoke("hide_listening_overlay");
+      await queueOverlayCommand("hide_listening_overlay");
     } catch (error) {
       console.error("Failed to hide screen overlay:", error);
     }
@@ -339,6 +371,60 @@ export default function MainScreen({
           setAssistantUiState("thinking");
           break;
 
+        case "screen.capture.requested":
+          setScreenNotice({
+            status: "info",
+            title: "Разовый снимок экрана",
+            message: "Мелисса получает только текущий кадр. Постоянный просмотр выключен.",
+          });
+          void queueOverlayCommand("show_screen_capture_overlay");
+          break;
+
+        case "screen.capture.completed":
+          setScreenNotice({
+            status: "info",
+            title: "Снимок готов",
+            message: "Изображение отправлено только для текущего ответа и не записано в память.",
+          });
+          break;
+
+        case "screen.analysis.ready":
+          setScreenNotice(null);
+          void queueOverlayCommand("show_screen_guidance_overlay", {
+            payload: event.payload as unknown as ScreenGuidance,
+          });
+          break;
+
+        case "screen.capture.failed":
+          void hideScreenOverlay();
+          setScreenNotice({
+            status: "error",
+            title: "Снимок не получен",
+            message: "Проверь доступ Windows к захвату экрана и попробуй ещё раз.",
+          });
+          break;
+
+        case "screen.action.completed":
+          setScreenNotice({
+            status: "success",
+            title: "Нажатие выполнено",
+            message:
+              typeof event.payload.label === "string"
+                ? `Мелисса нажала «${event.payload.label}» после подтверждения.`
+                : "Подтверждённое нажатие выполнено.",
+          });
+          break;
+
+        case "screen.action.failed":
+        case "screen.canvas.failed":
+          void hideScreenOverlay();
+          setScreenNotice({
+            status: "error",
+            title: "Действие не выполнено",
+            message: "Предложение устарело или Windows отклонила действие. Сделай новый снимок.",
+          });
+          break;
+
         case "ai.response.received":
           setAssistantUiState("thinking");
           break;
@@ -483,6 +569,57 @@ export default function MainScreen({
       }
       void hideScreenOverlay();
       window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const unlisten = listen<ScreenGuidanceAction>(
+      "screen-guidance-action",
+      async (event) => {
+        if (!mounted) return;
+
+        const { analysisId, action } = event.payload;
+        if (!analysisId) return;
+
+        try {
+          if (action === "confirm") {
+            // The transparent overlay must disappear before the local click,
+            // otherwise the click would land on Ziren itself.
+            await hideScreenOverlay();
+            await new Promise<void>((resolve) => {
+              window.setTimeout(resolve, 220);
+            });
+            await confirmScreenClick(analysisId);
+            return;
+          }
+
+          if (action === "canvas") {
+            await saveScreenToCanvas(analysisId);
+            await hideScreenOverlay();
+            return;
+          }
+
+          await dismissScreenGuidance(analysisId);
+          await hideScreenOverlay();
+        } catch (error) {
+          console.error("Screen guidance action failed:", error);
+          await hideScreenOverlay();
+          setScreenNotice({
+            status: "error",
+            title: "Действие не выполнено",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Предложение устарело. Сделай новый снимок экрана.",
+          });
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      void unlisten.then((dispose) => dispose());
     };
   }, []);
 
@@ -699,6 +836,26 @@ export default function MainScreen({
             type="button"
             aria-label="Закрыть уведомление"
             onClick={() => setDrawingNotice(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {screenNotice && (
+        <div
+          className={`screen-notice is-${screenNotice.status}`}
+          role="status"
+        >
+          <div>
+            <span>SCREEN COPILOT</span>
+            <strong>{screenNotice.title}</strong>
+            <small>{screenNotice.message}</small>
+          </div>
+          <button
+            type="button"
+            aria-label="Закрыть уведомление"
+            onClick={() => setScreenNotice(null)}
           >
             ×
           </button>

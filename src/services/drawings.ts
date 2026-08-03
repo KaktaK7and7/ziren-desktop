@@ -1,7 +1,7 @@
 import { fetchAssistantApi } from "./localApi";
 
 
-export type DrawingKind = "sketch" | "technical" | "story";
+export type DrawingKind = "sketch" | "technical" | "story" | "screen";
 
 export type MelissaDrawing = {
   id: string;

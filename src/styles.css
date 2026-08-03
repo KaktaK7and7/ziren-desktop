@@ -1159,13 +1159,6 @@ input {
   background: rgba(0, 229, 255, 0.06);
 }
 
-.screen-guidance-button.is-confirm {
-  color: #031014;
-  border: 1px solid #57f2c1;
-  background: #57f2c1;
-  box-shadow: 0 0 20px rgba(87, 242, 193, 0.18);
-}
-
 @keyframes screenOverlayPulse {
   0%,
   100% {

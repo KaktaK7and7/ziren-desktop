@@ -25,7 +25,6 @@ import {
 import { getCurrentUser } from "../services/session";
 import { fetchAssistantApi } from "../services/localApi";
 import {
-  confirmScreenClick,
   dismissScreenGuidance,
   saveScreenToCanvas,
   type ScreenGuidance,
@@ -405,13 +404,14 @@ export default function MainScreen({
           break;
 
         case "screen.action.completed":
+          void hideScreenOverlay();
           setScreenNotice({
             status: "success",
             title: "Нажатие выполнено",
             message:
               typeof event.payload.label === "string"
-                ? `Мелисса нажала «${event.payload.label}» после подтверждения.`
-                : "Подтверждённое нажатие выполнено.",
+                ? `Мелисса нажала «${event.payload.label}» по твоей команде.`
+                : "Мелисса выполнила одно нажатие по твоей команде.",
           });
           break;
 
@@ -583,17 +583,6 @@ export default function MainScreen({
         if (!analysisId) return;
 
         try {
-          if (action === "confirm") {
-            // The transparent overlay must disappear before the local click,
-            // otherwise the click would land on Ziren itself.
-            await hideScreenOverlay();
-            await new Promise<void>((resolve) => {
-              window.setTimeout(resolve, 220);
-            });
-            await confirmScreenClick(analysisId);
-            return;
-          }
-
           if (action === "canvas") {
             await saveScreenToCanvas(analysisId);
             await hideScreenOverlay();

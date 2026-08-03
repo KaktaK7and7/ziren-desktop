@@ -175,18 +175,6 @@ export default function ScreenOverlay() {
                 {workingAction === "canvas" ? "Сохраняю…" : "Сохранить в Холст"}
               </button>
             )}
-            {guidance.action.available && (
-              <button
-                className="screen-guidance-button is-confirm"
-                type="button"
-                disabled={Boolean(workingAction)}
-                onClick={() => void sendAction("confirm")}
-              >
-                {workingAction === "confirm"
-                  ? "Подтверждаю…"
-                  : `Нажать «${guidance.action.label}»`}
-              </button>
-            )}
           </footer>
         </section>
       </div>

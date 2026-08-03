@@ -36,7 +36,7 @@ export type ScreenGuidance = {
 
 export type ScreenGuidanceAction = {
   analysisId: string;
-  action: "confirm" | "canvas" | "dismiss";
+  action: "canvas" | "dismiss";
 };
 
 
@@ -64,15 +64,6 @@ async function postScreenAction(
   }
 
   return data;
-}
-
-
-export function confirmScreenClick(analysisId: string) {
-  return postScreenAction(
-    analysisId,
-    "confirm",
-    { confirmed: true },
-  );
 }
 
 

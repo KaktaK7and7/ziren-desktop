@@ -376,7 +376,9 @@ export default function MainScreen({
             title: "Разовый снимок экрана",
             message: "Мелисса получает только текущий кадр. Постоянный просмотр выключен.",
           });
-          void queueOverlayCommand("show_screen_capture_overlay");
+          // Hide the previous focusable guidance window before the core binds
+          // the new screenshot to the user's foreground application.
+          void hideScreenOverlay();
           break;
 
         case "screen.capture.completed":
@@ -385,6 +387,7 @@ export default function MainScreen({
             title: "Снимок готов",
             message: "Изображение отправлено только для текущего ответа и не записано в память.",
           });
+          void queueOverlayCommand("show_screen_capture_overlay");
           break;
 
         case "screen.analysis.ready":

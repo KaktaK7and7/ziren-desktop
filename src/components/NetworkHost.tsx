@@ -157,7 +157,13 @@ export default function NetworkHost() {
         wireProfileTarget(nameElement, userId, username);
 
         const actions = row.querySelector<HTMLElement>(".network-actions");
-        if (actions && !actions.querySelector("[data-network-profile-button]")) {
+        const hasProfileButton = actions
+          ? [...actions.querySelectorAll("button")].some(
+              (button) => button.textContent?.trim() === "Профиль",
+            ) || Boolean(actions.querySelector("[data-network-profile-button]"))
+          : false;
+
+        if (actions && !hasProfileButton) {
           const button = document.createElement("button");
           button.type = "button";
           button.className = "network-btn is-ghost";

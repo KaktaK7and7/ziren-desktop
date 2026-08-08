@@ -107,27 +107,6 @@ export default function ScreenOverlay() {
           Разовый снимок обработан · постоянный просмотр выключен
         </div>
 
-        <div className="screen-guidance-annotations" aria-hidden="true">
-          {guidance.annotations.map((annotation, index) => (
-            <div
-              className={[
-                "screen-guidance-annotation",
-                `is-${annotation.kind}`,
-              ].join(" ")}
-              key={annotation.id}
-              style={{
-                left: `${annotation.x * 100}%`,
-                top: `${annotation.y * 100}%`,
-                width: `${annotation.width * 100}%`,
-                height: `${annotation.height * 100}%`,
-              }}
-            >
-              <span>{annotation.step || index + 1}</span>
-              <strong>{annotation.label}</strong>
-            </div>
-          ))}
-        </div>
-
         <section className="screen-guidance-panel" aria-label="Подсказка Мелиссы">
           <header>
             <div>

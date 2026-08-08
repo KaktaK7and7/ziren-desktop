@@ -1,0 +1,510 @@
+.profile-social-panel {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.social-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.social-panel-head h3 {
+  margin-bottom: 12px;
+}
+
+.social-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 77, 109, 0.42);
+  border-radius: 12px;
+  background: rgba(255, 77, 109, 0.1);
+  color: #ffb3c0;
+  font-size: 13px;
+}
+
+.social-privacy-row,
+.social-announce-toggle,
+.social-chat-announce {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.social-privacy-row {
+  padding: 13px 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 245, 255, 0.14);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.social-privacy-row > span,
+.social-announce-toggle > span {
+  display: grid;
+  gap: 4px;
+}
+
+.social-privacy-row small,
+.social-announce-toggle small,
+.social-person-row small,
+.social-friend-main small,
+.social-chat-header small {
+  color: rgba(245, 247, 255, 0.48);
+  line-height: 1.35;
+}
+
+.social-privacy-row input[type="checkbox"],
+.social-announce-toggle input[type="checkbox"],
+.social-chat-announce input[type="checkbox"] {
+  width: 19px;
+  height: 19px;
+  accent-color: #00f5ff;
+}
+
+.social-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.social-search-row input,
+.social-friend-settings input,
+.social-compose textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 245, 255, 0.16);
+  background: rgba(0, 0, 0, 0.32);
+  color: #eaffff;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.social-search-row input,
+.social-friend-settings input {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 11px;
+}
+
+.social-search-row input:focus,
+.social-friend-settings input:focus,
+.social-compose textarea:focus {
+  border-color: rgba(0, 245, 255, 0.65);
+  box-shadow: 0 0 18px rgba(0, 245, 255, 0.1);
+}
+
+.social-search-row button,
+.social-person-row button,
+.social-card-actions button,
+.social-compose button,
+.social-profile-actions button,
+.social-ghost-button,
+.social-danger-button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  border-radius: 11px;
+  background: rgba(0, 245, 255, 0.09);
+  color: #dffcff;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.social-search-row button:hover,
+.social-person-row button:hover,
+.social-card-actions button:hover,
+.social-compose button:hover,
+.social-profile-actions button:hover {
+  border-color: rgba(0, 245, 255, 0.72);
+  background: rgba(0, 245, 255, 0.15);
+}
+
+.social-search-row button:disabled,
+.social-person-row button:disabled,
+.social-card-actions button:disabled,
+.social-compose button:disabled,
+.social-profile-actions button:disabled,
+.social-ghost-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.social-ghost-button {
+  background: rgba(255, 255, 255, 0.035) !important;
+  color: rgba(223, 252, 255, 0.72) !important;
+}
+
+.social-danger-button {
+  border-color: rgba(255, 77, 109, 0.42) !important;
+  background: rgba(255, 77, 109, 0.08) !important;
+  color: #ff8da3 !important;
+}
+
+.social-search-results,
+.social-request-block,
+.social-friend-list {
+  display: grid;
+  gap: 9px;
+}
+
+.social-search-results,
+.social-request-block {
+  margin: 0 0 15px;
+  padding: 12px;
+  border: 1px solid rgba(0, 245, 255, 0.12);
+  border-radius: 15px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.social-request-block > strong {
+  color: #00f5ff;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.social-request-block.is-muted > strong {
+  color: rgba(223, 252, 255, 0.58);
+}
+
+.social-person-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.social-person-row img,
+.social-friend-main img,
+.social-chat-header img {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  background: #05060b;
+}
+
+.social-person-row > div,
+.social-friend-main > div,
+.social-chat-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.social-person-row strong,
+.social-person-row small,
+.social-friend-main strong,
+.social-friend-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-state-badge {
+  padding: 7px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(234, 255, 0, 0.18);
+  color: rgba(234, 255, 0, 0.72);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.social-friend-card {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.8fr) minmax(300px, 1.5fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(0, 245, 255, 0.12);
+  border-radius: 16px;
+  background:
+    linear-gradient(120deg, rgba(0, 245, 255, 0.045), transparent 42%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.social-friend-main {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.social-avatar-button,
+.social-name-button,
+.social-shot-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.social-avatar-button {
+  width: 44px;
+  height: 44px;
+}
+
+.social-name-button {
+  max-width: 100%;
+  text-align: left;
+  color: #eaffff;
+  font-size: 14px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-unread {
+  min-width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #00f5ff;
+  color: #001015;
+  font-size: 11px;
+  font-weight: 950;
+  box-shadow: 0 0 16px rgba(0, 245, 255, 0.36);
+}
+
+.social-friend-settings {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) auto minmax(220px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.social-friend-settings > label:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.social-friend-settings > label:first-child > span {
+  color: rgba(245, 247, 255, 0.5);
+  font-size: 11px;
+}
+
+.social-announce-toggle {
+  min-height: 42px;
+  padding: 7px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.social-announce-toggle strong {
+  font-size: 12px;
+}
+
+.social-announce-toggle small {
+  font-size: 10px;
+}
+
+.social-card-actions,
+.social-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.social-friend-profile {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid rgba(0, 245, 255, 0.13);
+  border-radius: 17px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.social-friend-profile > img {
+  width: 110px;
+  height: 110px;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 1px solid rgba(0, 245, 255, 0.28);
+}
+
+.social-friend-profile h4 {
+  margin: 6px 0 8px;
+  font-size: 26px;
+}
+
+.social-friend-profile p {
+  margin: 6px 0;
+  color: rgba(245, 247, 255, 0.58);
+}
+
+.social-profile-actions {
+  grid-column: 1 / -1;
+}
+
+.social-chat {
+  display: grid;
+  gap: 12px;
+}
+
+.social-chat-header {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 245, 255, 0.12);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.social-chat-announce {
+  font-size: 11px;
+  color: rgba(245, 247, 255, 0.62);
+}
+
+.social-message-list {
+  height: 390px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px;
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  border-radius: 15px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.social-message {
+  align-self: flex-start;
+  max-width: min(72%, 680px);
+  padding: 9px 11px;
+  border-radius: 5px 14px 14px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.social-message.is-own {
+  align-self: flex-end;
+  border-radius: 14px 5px 14px 14px;
+  border-color: rgba(0, 245, 255, 0.18);
+  background: rgba(0, 245, 255, 0.09);
+}
+
+.social-message p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.social-message > small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(245, 247, 255, 0.34);
+  font-size: 9px;
+  text-align: right;
+}
+
+.social-message-kind {
+  display: block;
+  margin-top: 7px;
+  color: rgba(234, 255, 0, 0.62);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.social-shot-button {
+  display: block;
+  max-width: 420px;
+  margin-bottom: 7px;
+}
+
+.social-shot-button img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 245, 255, 0.12);
+  background: #020308;
+}
+
+.social-shot-loading,
+.social-shot-error {
+  min-width: 180px;
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 7px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(245, 247, 255, 0.45);
+  font-size: 11px;
+}
+
+.social-shot-error {
+  color: #ff8da3;
+}
+
+.social-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: stretch;
+}
+
+.social-compose textarea {
+  min-height: 74px;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.social-compose button {
+  min-width: 110px;
+}
+
+.social-voice-hint {
+  margin: 0;
+  color: rgba(245, 247, 255, 0.38);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .social-friend-card {
+    grid-template-columns: 1fr;
+  }
+
+  .social-friend-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .social-person-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .social-person-row > button,
+  .social-person-row > .social-state-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .social-message {
+    max-width: 88%;
+  }
+}

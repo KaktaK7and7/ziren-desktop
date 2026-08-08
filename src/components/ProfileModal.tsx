@@ -16,6 +16,7 @@ import {
   updateDesktopPreferences,
   uploadDesktopAvatar,
 } from "../services/auth";
+import { fetchFriendCode } from "../services/social";
 import { clearLocalApiToken } from "../services/localApi";
 
 import "./ProfileModal.css";
@@ -39,6 +40,8 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
   const [user, setUser] = useState<UserData | null>(getCurrentUser());
   const [isSyncing, setIsSyncing] = useState(false);
   const [error, setError] = useState("");
+  const [friendCode, setFriendCode] = useState("");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const avatarUrl = useMemo(() => {
     return resolveAuthAssetUrl(user?.avatar_url);
@@ -63,6 +66,34 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
       setError(err instanceof Error ? err.message : "Ошибка синхронизации");
     } finally {
       setIsSyncing(false);
+    }
+  }
+
+  async function syncFriendCode() {
+    try {
+      setFriendCode(await fetchFriendCode());
+    } catch (err) {
+      console.error("Failed to load friend code:", err);
+    }
+  }
+
+  function openNetwork(tab: "friends" | "messages") {
+    window.dispatchEvent(
+      new CustomEvent("ziren-network-open", {
+        detail: { tab },
+      }),
+    );
+    onClose();
+  }
+
+  async function copyFriendCode() {
+    if (!friendCode) return;
+    try {
+      await navigator.clipboard.writeText(friendCode);
+      setCodeCopied(true);
+      window.setTimeout(() => setCodeCopied(false), 1500);
+    } catch {
+      setError("Не удалось скопировать код");
     }
   }
 
@@ -140,10 +171,11 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
   }
 
   useEffect(() => {
-    syncProfile();
+    void syncProfile();
+    void syncFriendCode();
 
     const intervalId = window.setInterval(() => {
-      syncProfile();
+      void syncProfile();
     }, 20000);
 
     return () => {
@@ -236,6 +268,11 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
               </div>
 
               <div>
+                <span>Код Ziren</span>
+                <strong>{friendCode || "—"}</strong>
+              </div>
+
+              <div>
                 <span>Регистрация</span>
                 <strong>{formatDate(user?.created_at)}</strong>
               </div>
@@ -261,6 +298,11 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             )}
 
             <div className="profile-actions">
+              <button onClick={() => openNetwork("friends")}>Друзья</button>
+              <button onClick={() => openNetwork("messages")}>Сообщения</button>
+              <button onClick={() => void copyFriendCode()} disabled={!friendCode}>
+                {codeCopied ? "Код скопирован" : "Скопировать код"}
+              </button>
               <button onClick={handleOpenSiteProfile}>
                 Открыть профиль в браузере
               </button>

@@ -34,6 +34,7 @@ export type FriendSearchResult = {
   username: string;
   avatar_url: string;
   status_text: string;
+  friend_code: string | null;
   public_profile_url: string | null;
   friendship_status: "none" | "pending" | "accepted";
   request_direction: "incoming" | "outgoing" | null;
@@ -106,6 +107,13 @@ export type FriendsPayload = {
 type SearchPayload = {
   ok: boolean;
   users: FriendSearchResult[];
+  search_mode?: "username" | "code";
+  error?: string;
+};
+
+type FriendCodePayload = {
+  ok: boolean;
+  friend_code: string;
   error?: string;
 };
 
@@ -172,6 +180,15 @@ async function requireOk<T extends { ok: boolean; error?: string }>(
 export async function fetchFriends() {
   const response = await fetchAuthenticatedAuthApi("/api/social/friends");
   return requireOk<FriendsPayload>(response, "Не удалось загрузить друзей");
+}
+
+export async function fetchFriendCode() {
+  const response = await fetchAuthenticatedAuthApi("/api/social/friend-code");
+  const data = await requireOk<FriendCodePayload>(
+    response,
+    "Не удалось загрузить уникальный код",
+  );
+  return data.friend_code;
 }
 
 export async function searchUsers(query: string) {

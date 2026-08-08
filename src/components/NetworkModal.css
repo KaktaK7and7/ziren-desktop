@@ -1,0 +1,459 @@
+.network-shortcuts {
+  position: absolute;
+  top: 18px;
+  right: 185px;
+  z-index: 55;
+  display: flex;
+  gap: 7px;
+}
+
+.network-shortcut-button {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 245, 255, .18);
+  border-radius: 13px;
+  color: #dffcff;
+  background: rgba(7, 9, 15, .86);
+  box-shadow: 0 0 18px rgba(0, 245, 255, .07);
+  backdrop-filter: blur(14px);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.network-shortcut-button:hover {
+  border-color: rgba(0, 245, 255, .58);
+  background: rgba(0, 245, 255, .09);
+}
+
+.network-shortcut-button b {
+  margin-left: 5px;
+  color: #031214;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #00f5ff;
+  font-size: 9px;
+}
+
+.network-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  padding: 18px;
+  overflow: auto;
+  background: rgba(1, 3, 8, .86);
+  backdrop-filter: blur(16px);
+}
+
+.network-modal-page {
+  width: min(1120px, 100%);
+  min-height: calc(100vh - 36px);
+  margin: 0 auto;
+  border: 1px solid rgba(0, 245, 255, .13);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(0, 245, 255, .07), transparent 32%),
+    #060a11;
+  box-shadow: 0 34px 110px rgba(0, 0, 0, .58);
+  overflow: hidden;
+}
+
+.network-modal-head {
+  min-height: 72px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(0, 245, 255, .1);
+  background: rgba(4, 8, 14, .88);
+}
+
+.network-modal-head h2,
+.network-modal-head p {
+  margin: 0;
+}
+
+.network-modal-head span {
+  color: #00f5ff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.network-modal-head p {
+  margin-top: 4px;
+  color: #7f91a6;
+  font-size: 11px;
+}
+
+.network-head-actions,
+.network-tabs,
+.network-actions,
+.network-row,
+.network-compose,
+.network-person-row,
+.network-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.network-tabs {
+  padding: 12px 18px 0;
+}
+
+.network-tabs button,
+.network-btn {
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid rgba(0, 245, 255, .15);
+  border-radius: 10px;
+  color: #dffcff;
+  background: rgba(0, 245, 255, .045);
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.network-tabs button.is-active,
+.network-tabs button:hover,
+.network-btn:hover {
+  border-color: rgba(0, 245, 255, .48);
+  background: rgba(0, 245, 255, .1);
+}
+
+.network-btn.is-ghost {
+  border-color: rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .025);
+}
+
+.network-btn.is-danger {
+  border-color: rgba(255, 95, 127, .25);
+  color: #ff9daf;
+  background: rgba(255, 95, 127, .055);
+}
+
+.network-btn:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.network-error {
+  margin: 12px 18px 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 95, 127, .24);
+  border-radius: 11px;
+  color: #ffadbd;
+  background: rgba(255, 95, 127, .055);
+  font-size: 11px;
+}
+
+.network-friends-view {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.network-card {
+  padding: 16px;
+  border: 1px solid rgba(0, 245, 255, .09);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, .18);
+}
+
+.network-card h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.network-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.network-input,
+.network-textarea,
+.network-select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 245, 255, .12);
+  border-radius: 10px;
+  outline: none;
+  color: #eefcff;
+  background: rgba(0, 0, 0, .25);
+  font-size: 11px;
+}
+
+.network-textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.network-input:focus,
+.network-textarea:focus,
+.network-select:focus {
+  border-color: rgba(0, 245, 255, .45);
+}
+
+.network-list {
+  display: grid;
+  gap: 8px;
+}
+
+.network-person-row,
+.network-member-row {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, .17);
+}
+
+.network-person-row img,
+.network-member-row img,
+.network-thread img {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 245, 255, .14);
+  border-radius: 10px;
+  object-fit: cover;
+  background: #02050a;
+}
+
+.network-person-copy,
+.network-member-copy,
+.network-thread-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.network-person-copy strong,
+.network-member-copy strong,
+.network-thread-copy strong,
+.network-person-copy small,
+.network-member-copy small,
+.network-thread-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.network-person-copy small,
+.network-member-copy small,
+.network-thread-copy small,
+.network-muted {
+  color: #7f91a6;
+  font-size: 10px;
+}
+
+.network-friend-prefs {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.network-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #aebccc;
+  font-size: 10px;
+}
+
+.network-check input {
+  width: 17px;
+  height: 17px;
+  accent-color: #00f5ff;
+}
+
+.network-messenger {
+  min-height: 640px;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  border-top: 1px solid rgba(0, 245, 255, .08);
+}
+
+.network-thread-sidebar {
+  min-width: 0;
+  border-right: 1px solid rgba(0, 245, 255, .08);
+  background: rgba(2, 5, 10, .52);
+}
+
+.network-thread-title {
+  padding: 13px 14px 8px;
+  color: #6f8296;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.network-thread {
+  width: 100%;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .04);
+  color: #edfaff;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.network-thread:hover,
+.network-thread.is-active {
+  background: rgba(0, 245, 255, .06);
+}
+
+.network-unread {
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #021315;
+  background: #00f5ff;
+  font-size: 9px;
+  font-weight: 950;
+}
+
+.network-chat-pane {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.network-chat-head {
+  min-height: 58px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(0, 245, 255, .08);
+}
+
+.network-chat-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.network-messages {
+  min-height: 0;
+  max-height: 610px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.network-message {
+  max-width: 75%;
+  padding: 9px 10px;
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-radius: 12px 12px 12px 4px;
+  background: rgba(255, 255, 255, .04);
+}
+
+.network-message.is-own {
+  align-self: flex-end;
+  border-color: rgba(0, 245, 255, .16);
+  border-radius: 12px 12px 4px 12px;
+  background: rgba(0, 245, 255, .075);
+}
+
+.network-message-author,
+.network-message-time {
+  color: #718397;
+  font-size: 8px;
+}
+
+.network-message-body {
+  margin: 3px 0;
+  color: #eefcff;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.network-message img {
+  width: min(420px, 100%);
+  margin-top: 6px;
+  border-radius: 9px;
+}
+
+.network-compose {
+  padding: 10px;
+  border-top: 1px solid rgba(0, 245, 255, .08);
+}
+
+.network-compose .network-input {
+  flex: 1;
+}
+
+.network-empty {
+  min-height: 360px;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #728398;
+  text-align: center;
+}
+
+.network-create-group {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  border-bottom: 1px solid rgba(0, 245, 255, .08);
+}
+
+.network-member-picker {
+  max-height: 170px;
+  display: grid;
+  gap: 5px;
+  overflow-y: auto;
+}
+
+.network-member-picker label {
+  padding: 7px 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, .05);
+  border-radius: 9px;
+  color: #c5d4e3;
+  background: rgba(0, 0, 0, .15);
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .network-shortcuts {
+    right: 155px;
+  }
+
+  .network-shortcut-button {
+    width: 40px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .network-shortcut-button::first-letter {
+    font-size: 14px;
+  }
+
+  .network-messenger {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+}

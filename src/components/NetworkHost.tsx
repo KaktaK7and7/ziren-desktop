@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import NetworkModal, { type NetworkTab } from "./NetworkModal";
-import { fetchFriendCode, fetchFriends, fetchGroups } from "../services/social";
+import {
+  fetchFriendCode,
+  fetchFriends,
+  fetchGroups,
+  searchUsers,
+  socialProfileUrl,
+} from "../services/social";
 import { getCurrentUser } from "../services/session";
 import "./NetworkCompact.css";
 import "./NetworkHost.css";
@@ -16,6 +23,13 @@ export default function NetworkHost() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [friendCode, setFriendCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const peopleRef = useRef<Map<string, number>>(new Map());
+  const lastSearchRef = useRef("");
+
+  function rememberPerson(id: number, username: string) {
+    if (!id || !username) return;
+    peopleRef.current.set(username.trim().toLocaleLowerCase("ru-RU"), Number(id));
+  }
 
   async function refreshCounters() {
     try {
@@ -24,6 +38,12 @@ export default function NetworkHost() {
         fetchGroups(),
         fetchFriendCode(),
       ]);
+      for (const friend of friendsData.friends) {
+        rememberPerson(friend.id, friend.username);
+      }
+      for (const request of friendsData.requests) {
+        rememberPerson(request.user.id, request.user.username);
+      }
       setFriendCount(friendsData.friends.length);
       setIncomingCount(
         friendsData.requests.filter((request) => request.direction === "incoming").length,
@@ -47,6 +67,16 @@ export default function NetworkHost() {
   function openProfile() {
     const profileButton = document.querySelector<HTMLButtonElement>(".profile-button");
     profileButton?.click();
+  }
+
+  async function openNetworkProfile(userId: number) {
+    const url = socialProfileUrl(`/network-profile.html?id=${Number(userId)}`);
+    if (!url) return;
+    try {
+      await openUrl(url);
+    } catch {
+      // Ошибка открытия профиля не должна ломать Network workspace.
+    }
   }
 
   async function copyFriendCode() {
@@ -78,24 +108,77 @@ export default function NetworkHost() {
 
   useEffect(() => {
     if (openTab !== "friends") return;
+    let disposed = false;
+    let searchTimer: number | null = null;
 
-    function enhanceFriendSearch() {
+    function wireProfileTarget(element: HTMLElement | null, userId: number, username: string) {
+      if (!element || element.dataset.networkProfileWired === "true") return;
+      element.dataset.networkProfileWired = "true";
+      element.style.cursor = "pointer";
+      element.title = `Открыть профиль ${username}`;
+      element.addEventListener("click", () => void openNetworkProfile(userId));
+    }
+
+    function enhanceRows() {
       const input = document.querySelector<HTMLInputElement>(
         ".network-search-row .network-input",
       );
       if (input) {
         input.placeholder = "Ник или код ZR-XXXXXX";
         input.title = "Можно искать по нику или постоянному коду пользователя Ziren";
+
+        const query = input.value.trim();
+        if (
+          query.length >= 2
+          && query !== lastSearchRef.current
+          && searchTimer === null
+        ) {
+          searchTimer = window.setTimeout(() => {
+            searchTimer = null;
+            if (disposed) return;
+            lastSearchRef.current = query;
+            void searchUsers(query)
+              .then((people) => {
+                for (const person of people) rememberPerson(person.id, person.username);
+                enhanceRows();
+              })
+              .catch(() => undefined);
+          }, 180);
+        }
       }
+
+      document.querySelectorAll<HTMLElement>(".network-person-row").forEach((row) => {
+        const nameElement = row.querySelector<HTMLElement>(".network-person-copy strong");
+        const username = nameElement?.textContent?.trim() || "";
+        const userId = peopleRef.current.get(username.toLocaleLowerCase("ru-RU"));
+        if (!userId) return;
+
+        wireProfileTarget(row.querySelector<HTMLElement>("img"), userId, username);
+        wireProfileTarget(nameElement, userId, username);
+
+        const actions = row.querySelector<HTMLElement>(".network-actions");
+        if (actions && !actions.querySelector("[data-network-profile-button]")) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "network-btn is-ghost";
+          button.dataset.networkProfileButton = "true";
+          button.textContent = "Профиль";
+          button.addEventListener("click", () => void openNetworkProfile(userId));
+          actions.prepend(button);
+        }
+      });
     }
 
-    const timeoutId = window.setTimeout(enhanceFriendSearch, 0);
-    const observer = new MutationObserver(enhanceFriendSearch);
+    const timeoutId = window.setTimeout(enhanceRows, 0);
+    const observer = new MutationObserver(enhanceRows);
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
+      disposed = true;
       window.clearTimeout(timeoutId);
+      if (searchTimer !== null) window.clearTimeout(searchTimer);
       observer.disconnect();
+      lastSearchRef.current = "";
     };
   }, [openTab]);
 

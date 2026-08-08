@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+import SocialPanel from "./SocialPanel";
 import {
   getCurrentUser,
   type UserData,
@@ -46,6 +47,10 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
   const initial = (user?.username ?? "Z").slice(0, 1).toUpperCase();
   const stats = user?.stats;
   const achievements = user?.achievements ?? [];
+  const parsedUserId = Number.parseInt(user?.id ?? "", 10);
+  const currentUserId = Number.isInteger(parsedUserId) && parsedUserId > 0
+    ? parsedUserId
+    : null;
 
   async function syncProfile() {
     try {
@@ -397,34 +402,7 @@ export default function ProfileModal({ onClose, onLogout }: Props) {
             </div>
           </section>
 
-          <section className="profile-panel">
-            <div className="profile-panel-head">
-              <span>SOCIAL</span>
-              <h3>Социальные функции</h3>
-            </div>
-
-            <div className="profile-feature-list">
-              <div>
-                <strong>Сообщения</strong>
-                <span>Скоро</span>
-              </div>
-
-              <div>
-                <strong>Озвучивание переписок</strong>
-                <span>Скоро</span>
-              </div>
-
-              <div>
-                <strong>Видеозвонки</strong>
-                <span>Скоро</span>
-              </div>
-
-              <div>
-                <strong>Демонстрация экрана</strong>
-                <span>Скоро</span>
-              </div>
-            </div>
-          </section>
+          <SocialPanel currentUserId={currentUserId} />
         </main>
       </div>
     </div>

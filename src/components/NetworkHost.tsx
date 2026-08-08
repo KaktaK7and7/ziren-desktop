@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import NetworkModal, { type NetworkTab } from "./NetworkModal";
 import { fetchFriends, fetchGroups } from "../services/social";
+import "./NetworkCompact.css";
 
 export default function NetworkHost() {
   const [openTab, setOpenTab] = useState<NetworkTab | null>(null);

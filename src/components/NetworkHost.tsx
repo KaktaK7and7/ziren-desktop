@@ -76,6 +76,29 @@ export default function NetworkHost() {
     return () => window.removeEventListener("ziren-network-open", handleOpen);
   }, []);
 
+  useEffect(() => {
+    if (openTab !== "friends") return;
+
+    function enhanceFriendSearch() {
+      const input = document.querySelector<HTMLInputElement>(
+        ".network-search-row .network-input",
+      );
+      if (input) {
+        input.placeholder = "Ник или код ZR-XXXXXX";
+        input.title = "Можно искать по нику или постоянному коду пользователя Ziren";
+      }
+    }
+
+    const timeoutId = window.setTimeout(enhanceFriendSearch, 0);
+    const observer = new MutationObserver(enhanceFriendSearch);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [openTab]);
+
   const unreadLabel = useMemo(
     () => (unreadCount > 99 ? "99+" : String(unreadCount)),
     [unreadCount],

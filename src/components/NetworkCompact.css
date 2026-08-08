@@ -1,0 +1,171 @@
+@media (max-width: 650px) {
+  .network-shortcuts {
+    top: 70px;
+    right: 18px;
+    left: auto;
+    gap: 6px;
+  }
+
+  .network-shortcut-button {
+    width: auto;
+    min-width: 86px;
+    height: 36px;
+    padding: 0 9px;
+    font-size: 9px;
+    border-radius: 11px;
+  }
+
+  .network-shortcut-button::first-letter {
+    font-size: inherit;
+  }
+
+  .network-shortcut-button b {
+    margin-left: 4px;
+    padding: 1px 5px;
+    font-size: 8px;
+  }
+
+  .network-modal-overlay {
+    padding: 8px;
+  }
+
+  .network-modal-page {
+    min-height: calc(100vh - 16px);
+    border-radius: 17px;
+  }
+
+  .network-modal-head {
+    min-height: 62px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .network-modal-head h2 {
+    font-size: 18px;
+  }
+
+  .network-modal-head p {
+    display: none;
+  }
+
+  .network-tabs {
+    padding: 9px 10px 0;
+  }
+
+  .network-tabs button {
+    flex: 1;
+    padding-inline: 8px;
+  }
+
+  .network-friends-view {
+    padding: 10px;
+    gap: 9px;
+  }
+
+  .network-card {
+    padding: 11px;
+    border-radius: 13px;
+  }
+
+  .network-card h3 {
+    font-size: 14px;
+  }
+
+  .network-search-row {
+    grid-template-columns: 1fr;
+  }
+
+  .network-person-row,
+  .network-member-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .network-person-row > .network-actions,
+  .network-member-row > .network-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .network-friend-prefs {
+    grid-template-columns: 1fr;
+  }
+
+  .network-messenger {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .network-thread-sidebar {
+    max-height: 245px;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(0, 245, 255, .09);
+  }
+
+  .network-create-group {
+    padding: 9px;
+  }
+
+  .network-thread-title {
+    padding: 9px 11px 6px;
+  }
+
+  .network-thread {
+    padding: 8px 10px;
+  }
+
+  .network-thread img,
+  .network-thread > div:first-child {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .network-chat-pane {
+    min-height: 360px;
+  }
+
+  .network-chat-head {
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+
+  .network-chat-head h3 {
+    font-size: 13px;
+  }
+
+  .network-messages {
+    max-height: 360px;
+    padding: 10px;
+  }
+
+  .network-message {
+    max-width: 88%;
+  }
+
+  .network-compose {
+    padding: 8px;
+  }
+
+  .network-empty {
+    min-height: 240px;
+  }
+}
+
+@media (max-height: 650px) {
+  .network-modal-overlay {
+    overflow-y: auto;
+  }
+
+  .network-modal-page {
+    min-height: 620px;
+  }
+
+  .network-thread-sidebar {
+    max-height: 210px;
+  }
+
+  .network-messages {
+    max-height: 300px;
+  }
+}

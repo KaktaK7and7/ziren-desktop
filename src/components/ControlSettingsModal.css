@@ -1,0 +1,242 @@
+.control-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2, 8, 14, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.control-settings-shell {
+  width: min(920px, 94vw);
+  max-height: 88vh;
+  overflow: auto;
+  border: 1px solid rgba(36, 220, 255, 0.25);
+  border-radius: 18px;
+  padding: 22px;
+  background: linear-gradient(145deg, rgba(7, 18, 29, 0.98), rgba(8, 9, 20, 0.98));
+  box-shadow: 0 0 42px rgba(0, 220, 255, 0.09);
+}
+
+.control-settings-header,
+.control-capability-head,
+.control-capability-action-head,
+.control-settings-toolbar,
+.control-mode-grid article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.control-settings-header > div > span,
+.control-mode-tag,
+.control-capability-head span,
+.control-capability-action-head > span,
+.control-settings-toolbar span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: rgba(164, 214, 229, 0.6);
+}
+
+.control-settings-header h2,
+.control-mode-grid h3,
+.control-capability-card h4 {
+  margin: 4px 0;
+}
+
+.control-settings-header p,
+.control-mode-grid p,
+.control-capability-actions p {
+  margin: 4px 0 0;
+  color: rgba(204, 225, 234, 0.7);
+  line-height: 1.5;
+}
+
+.control-settings-close {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8fbff;
+  font-size: 24px;
+}
+
+.control-settings-error,
+.control-settings-loading,
+.control-settings-empty {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(232, 251, 255, 0.82);
+}
+
+.control-settings-error {
+  border: 1px solid rgba(255, 90, 90, 0.3);
+  color: #ffb0b0;
+}
+
+.control-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.control-mode-grid article,
+.control-capability-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.control-mode-grid article {
+  padding: 16px;
+  align-items: flex-start;
+}
+
+.control-mode-grid article.is-enabled {
+  border-color: rgba(30, 225, 255, 0.34);
+  box-shadow: inset 0 0 24px rgba(30, 225, 255, 0.04);
+}
+
+.control-mode-switch {
+  flex: 0 0 auto;
+}
+
+.control-mode-switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.control-mode-switch span {
+  display: block;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  position: relative;
+  cursor: pointer;
+}
+
+.control-mode-switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #d4edf5;
+  transition: transform 160ms ease;
+}
+
+.control-mode-switch input:checked + span {
+  background: rgba(28, 218, 255, 0.35);
+}
+
+.control-mode-switch input:checked + span::after {
+  transform: translateX(20px);
+}
+
+.control-settings-toolbar {
+  margin: 18px 0 10px;
+  flex-wrap: wrap;
+}
+
+.control-settings-toolbar > div {
+  display: grid;
+}
+
+.control-settings-toolbar input {
+  min-width: 230px;
+  flex: 1;
+}
+
+.control-settings-toolbar input,
+.control-settings-toolbar button {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e6faff;
+}
+
+.control-capability-list {
+  display: grid;
+  gap: 10px;
+}
+
+.control-capability-card {
+  padding: 14px;
+}
+
+.control-capability-head > strong {
+  color: #7defff;
+  font-size: 11px;
+}
+
+.control-capability-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.control-capability-actions > div {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.control-capability-action-head {
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.control-capability-action-head > div {
+  margin-left: auto;
+  display: flex;
+  gap: 5px;
+}
+
+.control-capability-action-head b {
+  padding: 3px 6px;
+  border: 1px solid rgba(52, 220, 255, 0.22);
+  border-radius: 5px;
+  color: #8cefff;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.control-trigger-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.control-trigger-preview span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(53, 205, 236, 0.07);
+  color: rgba(205, 240, 248, 0.75);
+  font-size: 11px;
+}
+
+@media (max-width: 680px) {
+  .control-settings-shell {
+    width: 96vw;
+    padding: 14px;
+  }
+
+  .control-mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-settings-toolbar input {
+    min-width: 100%;
+  }
+}

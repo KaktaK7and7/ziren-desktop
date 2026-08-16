@@ -1,0 +1,57 @@
+.settings-button-host {
+  position: relative;
+  display: inline-flex;
+}
+
+.settings-button-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 1100;
+  width: 250px;
+  padding: 7px;
+  border: 1px solid rgba(29, 220, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(5, 14, 23, 0.97);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.34);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-5px);
+  transition: opacity 130ms ease, transform 130ms ease, visibility 130ms ease;
+}
+
+.settings-button-host:hover .settings-button-menu,
+.settings-button-host:focus-within .settings-button-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.settings-button-menu button {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  padding: 10px;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #e9fbff;
+  cursor: pointer;
+}
+
+.settings-button-menu button:hover,
+.settings-button-menu button:focus-visible {
+  outline: none;
+  background: rgba(28, 213, 247, 0.08);
+}
+
+.settings-button-menu strong {
+  font-size: 12px;
+}
+
+.settings-button-menu span {
+  color: rgba(195, 224, 234, 0.6);
+  font-size: 10px;
+  line-height: 1.4;
+}

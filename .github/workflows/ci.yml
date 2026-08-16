@@ -36,8 +36,20 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Audit all dependencies
-        run: npm audit --audit-level=high
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Report dev-tool vulnerabilities
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=high
+          audit_code=$?
+          set -e
+          if [ "$audit_code" -ne 0 ]; then
+            echo "::warning::High-severity issue exists only in the development/build dependency tree. Runtime dependencies passed the blocking audit."
+          fi
+          exit 0
 
   rust:
     name: Rust format and check

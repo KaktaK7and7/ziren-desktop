@@ -1,6 +1,8 @@
 import { fetchAssistantApi } from "./localApi";
 
 export type CompanionSettings = {
+  melissa_command_mode_enabled: boolean;
+  snake_command_mode_enabled: boolean;
   command_reactions_enabled: boolean;
   command_reaction_chance: number;
   command_reaction_cooldown_minutes: number;

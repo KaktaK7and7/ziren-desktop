@@ -4,6 +4,9 @@ export type FeatureTriggerGroup = {
   action_id: string;
   display_name: string;
   triggers: string[];
+  argument_hint?: string;
+  melissa_semantic?: boolean;
+  snake_triggers?: boolean;
 };
 
 export type FeatureTriggerInfo = {
@@ -152,6 +155,8 @@ function buildLegacyGroups(triggers: string[]): FeatureTriggerGroup[] {
       action_id: "__legacy__",
       display_name: "Общие триггеры",
       triggers,
+      melissa_semantic: false,
+      snake_triggers: true,
     },
   ];
 }

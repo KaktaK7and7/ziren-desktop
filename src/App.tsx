@@ -8,6 +8,7 @@ import MainScreen from "./screens/MainScreen";
 import ScreenOverlay from "./screens/ScreenOverlay";
 import TrayMenu from "./screens/TrayMenu";
 import NetworkHost from "./components/NetworkHost";
+import OnboardingHost from "./components/OnboardingHost";
 
 import {
   getAuthSiteOrigin,
@@ -95,6 +96,7 @@ export default function App() {
     <>
       <MainScreen onLogout={() => setScreen("login")} />
       <NetworkHost />
+      <OnboardingHost />
     </>
   );
 }

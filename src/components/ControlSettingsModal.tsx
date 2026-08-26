@@ -10,6 +10,7 @@ import {
   fetchFeatureTriggers,
   type FeatureTriggerInfo,
 } from "../services/featureTriggers";
+import { requestOnboardingOpen } from "../services/onboarding";
 import {
   fetchSubscriptionStatus,
   getPricingUrl,
@@ -109,6 +110,11 @@ export default function ControlSettingsModal({
     } finally {
       setSaving(false);
     }
+  }
+
+  function reopenOnboarding() {
+    onClose();
+    window.setTimeout(() => requestOnboardingOpen(), 0);
   }
 
   return (
@@ -217,6 +223,9 @@ export default function ControlSettingsModal({
                 placeholder="Найти функцию или команду"
                 onChange={(event) => setQuery(event.target.value)}
               />
+              <button type="button" onClick={reopenOnboarding}>
+                Повторить настройку
+              </button>
               <button
                 type="button"
                 onClick={() => {

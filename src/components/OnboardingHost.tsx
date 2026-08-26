@@ -6,6 +6,7 @@ import {
   saveCompanionSettings,
   type CompanionSettings,
 } from "../services/companionSettings";
+import { ONBOARDING_OPEN_EVENT } from "../services/onboarding";
 import { getCurrentUser } from "../services/session";
 import {
   fetchSubscriptionStatus,
@@ -26,10 +27,12 @@ async function measureMicrophoneSignal() {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("Проверка микрофона недоступна в этом WebView.");
   }
+  if (!window.AudioContext) {
+    throw new Error("WebAudio недоступен. Не удалось проверить живой сигнал микрофона.");
+  }
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const AudioContextClass = window.AudioContext;
-  const context = new AudioContextClass();
+  const context = new window.AudioContext();
   const source = context.createMediaStreamSource(stream);
   const analyser = context.createAnalyser();
   analyser.fftSize = 1024;
@@ -73,27 +76,48 @@ export default function OnboardingHost() {
 
   useEffect(() => {
     if (!user?.id) return;
-    if (localStorage.getItem(onboardingKey(user.id)) === "done") return;
 
     let active = true;
-    Promise.all([
-      fetchCompanionSettings(),
-      fetchSubscriptionStatus().catch(() => null),
-    ])
-      .then(([loadedSettings, loadedSubscription]) => {
+
+    async function prepare(force: boolean) {
+      if (!user?.id) return;
+      if (!force && localStorage.getItem(onboardingKey(user.id)) === "done") return;
+
+      setStep(0);
+      setCoreState("idle");
+      setMicState("idle");
+      setCoreMessage("");
+      setMicMessage("");
+      setError("");
+      setSaving(false);
+      setSettings(null);
+      setSubscription(null);
+      setVisible(true);
+
+      try {
+        const [loadedSettings, loadedSubscription] = await Promise.all([
+          fetchCompanionSettings(),
+          fetchSubscriptionStatus().catch(() => null),
+        ]);
         if (!active) return;
         setSettings(loadedSettings);
         setSubscription(loadedSubscription);
-        setVisible(true);
-      })
-      .catch((reason) => {
+      } catch (reason) {
         if (!active) return;
         setError(reason instanceof Error ? reason.message : "Не удалось подготовить первый запуск Ziren");
-        setVisible(true);
-      });
+      }
+    }
+
+    const reopen = () => {
+      void prepare(true);
+    };
+
+    window.addEventListener(ONBOARDING_OPEN_EVENT, reopen);
+    void prepare(false);
 
     return () => {
       active = false;
+      window.removeEventListener(ONBOARDING_OPEN_EVENT, reopen);
     };
   }, [user?.id]);
 
@@ -111,6 +135,12 @@ export default function OnboardingHost() {
     if (settings.melissa_command_mode_enabled) return "Включена только умная Мелисса.";
     return "Включена локальная Змея.";
   }, [settings]);
+
+  const canAdvance = useMemo(() => {
+    if (step === 0) return coreState === "ok" && micState === "ok";
+    if (step === 1) return Boolean(settings) && !saving;
+    return true;
+  }, [coreState, micState, saving, settings, step]);
 
   async function checkCore() {
     setCoreState("checking");
@@ -146,17 +176,20 @@ export default function OnboardingHost() {
       return;
     }
 
+    const previous = settings;
     const next = { ...settings, ...patch };
     if (!next.melissa_command_mode_enabled && !next.snake_command_mode_enabled) {
       setError("Нужно оставить включённым хотя бы один режим команд.");
       return;
     }
 
+    setSettings(next);
     setSaving(true);
     setError("");
     try {
       setSettings(await saveCompanionSettings(next));
     } catch (reason) {
+      setSettings(previous);
       setError(reason instanceof Error ? reason.message : "Не удалось сохранить режимы.");
     } finally {
       setSaving(false);
@@ -166,6 +199,11 @@ export default function OnboardingHost() {
   function finish() {
     if (user?.id) localStorage.setItem(onboardingKey(user.id), "done");
     setVisible(false);
+  }
+
+  function goNext() {
+    if (!canAdvance) return;
+    setStep((value) => Math.min(LAST_STEP, value + 1));
   }
 
   if (!visible) return null;
@@ -209,6 +247,9 @@ export default function OnboardingHost() {
                   </button>
                 </article>
               </div>
+              {!canAdvance && (
+                <p className="onboarding-gate-note">Чтобы продолжить, Core и микрофон должны пройти проверку. Если сейчас неудобно — нажми «Позже».</p>
+              )}
             </div>
           )}
 
@@ -216,7 +257,7 @@ export default function OnboardingHost() {
             <div className="onboarding-step">
               <span className="onboarding-kicker">02 / РЕЖИМЫ</span>
               <h3>Как будут выполняться команды</h3>
-              <p>{modeDescription}</p>
+              <p>{modeDescription || "Загружаю текущие режимы…"}</p>
               <div className="onboarding-mode-grid">
                 <button
                   type="button"
@@ -280,7 +321,17 @@ export default function OnboardingHost() {
           <button type="button" className="is-quiet" onClick={() => setVisible(false)}>Позже</button>
           <div>
             {step > 0 && <button type="button" onClick={() => setStep((value) => Math.max(0, value - 1))}>Назад</button>}
-            {step < LAST_STEP && <button type="button" className="is-primary" onClick={() => setStep((value) => Math.min(LAST_STEP, value + 1))}>Дальше</button>}
+            {step < LAST_STEP && (
+              <button
+                type="button"
+                className="is-primary"
+                disabled={!canAdvance}
+                title={!canAdvance && step === 0 ? "Сначала проверь Core и микрофон" : undefined}
+                onClick={goNext}
+              >
+                Дальше
+              </button>
+            )}
           </div>
         </footer>
       </section>

@@ -65,6 +65,17 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Stage compile-only sidecar stub
+        shell: pwsh
+        run: |
+          $targetTriple = (rustc --print host-tuple).Trim()
+          if (-not $targetTriple) { throw "Could not resolve Rust host target triple" }
+          $dir = "src-tauri/binaries"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $destination = Join-Path $dir ("assistant-core-" + $targetTriple + ".exe")
+          Copy-Item -Force "$env:WINDIR/System32/where.exe" $destination
+          Write-Host "Compile-only sidecar stub: $destination"
+
       - name: Check Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 

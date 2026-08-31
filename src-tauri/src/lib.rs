@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
-use std::process::{Child, Command};
+#[cfg(debug_assertions)]
+use std::process::{Child as DebugChild, Command};
 use std::sync::Mutex;
 
 use tauri::{
@@ -7,12 +8,64 @@ use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder,
     WindowEvent,
 };
+#[cfg(not(debug_assertions))]
+use tauri_plugin_shell::{
+    process::{CommandChild, CommandEvent},
+    ShellExt,
+};
+
+#[derive(Debug)]
+enum AssistantChild {
+    #[cfg(debug_assertions)]
+    Debug(DebugChild),
+    #[cfg(not(debug_assertions))]
+    Release(CommandChild),
+}
 
 struct AssistantProcess {
-    child: Child,
+    child: AssistantChild,
+    pid: u32,
     local_api_token: String,
     desktop_token: String,
     auth_site_url: String,
+}
+
+impl AssistantProcess {
+    fn matches_session(&self, local_api_token: &str, desktop_token: &str, auth_site_url: &str) -> bool {
+        self.local_api_token == local_api_token
+            && self.desktop_token == desktop_token
+            && self.auth_site_url == auth_site_url
+    }
+
+    fn is_running(&mut self) -> bool {
+        #[cfg(debug_assertions)]
+        {
+            let AssistantChild::Debug(child) = &mut self.child;
+            matches!(child.try_wait(), Ok(None))
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            // Release termination is observed by the sidecar event monitor, which
+            // removes the matching PID from ASSISTANT_PROCESS asynchronously.
+            true
+        }
+    }
+
+    fn stop(self) {
+        #[cfg(debug_assertions)]
+        {
+            let AssistantChild::Debug(mut child) = self.child;
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            let AssistantChild::Release(child) = self.child;
+            let _ = child.kill();
+        }
+    }
 }
 
 static ASSISTANT_PROCESS: Lazy<Mutex<Option<AssistantProcess>>> = Lazy::new(|| Mutex::new(None));
@@ -55,6 +108,7 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn start_assistant_core(
+    app: AppHandle,
     desktop_token: String,
     local_api_token: String,
     auth_site_url: String,
@@ -76,25 +130,19 @@ fn start_assistant_core(
         .map_err(|_| "Failed to lock assistant process")?;
 
     if let Some(current) = process.as_mut() {
-        match current.child.try_wait() {
-            Ok(None)
-                if current.local_api_token == local_api_token
-                    && current.desktop_token == desktop_token
-                    && current.auth_site_url == auth_site_url =>
-            {
-                return Ok(());
-            }
-            Ok(None) => {
-                let _ = current.child.kill();
-                let _ = current.child.wait();
-                *process = None;
-            }
-            Ok(Some(_)) | Err(_) => *process = None,
+        if current.matches_session(local_api_token, desktop_token, &auth_site_url)
+            && current.is_running()
+        {
+            return Ok(());
         }
     }
 
+    if let Some(current) = process.take() {
+        current.stop();
+    }
+
     #[cfg(debug_assertions)]
-    let child = {
+    {
         let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
@@ -112,7 +160,7 @@ fn start_assistant_core(
             .join("Scripts")
             .join("python.exe");
 
-        Command::new(python_path)
+        let child = Command::new(python_path)
             .arg("-m")
             .arg("app.main")
             .current_dir(assistant_root)
@@ -120,50 +168,81 @@ fn start_assistant_core(
             .env("ZIREN_DESKTOP_TOKEN", desktop_token)
             .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
             .spawn()
-    };
+            .map_err(|error| error.to_string())?;
+        let pid = child.id();
+
+        *process = Some(AssistantProcess {
+            child: AssistantChild::Debug(child),
+            pid,
+            local_api_token: local_api_token.to_string(),
+            desktop_token: desktop_token.to_string(),
+            auth_site_url,
+        });
+    }
 
     #[cfg(not(debug_assertions))]
-    let child = Command::new("assistant-core.exe")
-        .env("AUTH_SITE_URL", &auth_site_url)
-        .env("ZIREN_DESKTOP_TOKEN", desktop_token)
-        .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
-        .spawn();
+    {
+        let command = app
+            .shell()
+            .sidecar("assistant-core")
+            .map_err(|error| format!("Packaged Assistant Core is unavailable: {error}"))?
+            .env("AUTH_SITE_URL", &auth_site_url)
+            .env("ZIREN_DESKTOP_TOKEN", desktop_token)
+            .env("ZIREN_LOCAL_API_TOKEN", local_api_token);
 
-    match child {
-        Ok(child) => {
-            *process = Some(AssistantProcess {
-                child,
-                local_api_token: local_api_token.to_string(),
-                desktop_token: desktop_token.to_string(),
-                auth_site_url,
-            });
+        let (mut events, child) = command
+            .spawn()
+            .map_err(|error| format!("Failed to start packaged Assistant Core: {error}"))?;
+        let pid = child.pid();
 
-            println!("✅ Assistant core started");
+        *process = Some(AssistantProcess {
+            child: AssistantChild::Release(child),
+            pid,
+            local_api_token: local_api_token.to_string(),
+            desktop_token: desktop_token.to_string(),
+            auth_site_url,
+        });
 
-            Ok(())
-        }
-
-        Err(error) => {
-            println!("❌ Failed to start assistant core: {}", error);
-
-            Err(error.to_string())
-        }
+        tauri::async_runtime::spawn(async move {
+            while let Some(event) = events.recv().await {
+                match event {
+                    CommandEvent::Terminated(payload) => {
+                        if let Ok(mut process) = ASSISTANT_PROCESS.lock() {
+                            if process.as_ref().is_some_and(|current| current.pid == pid) {
+                                *process = None;
+                            }
+                        }
+                        eprintln!(
+                            "Assistant Core terminated: pid={pid}, code={:?}, signal={:?}",
+                            payload.code, payload.signal
+                        );
+                        break;
+                    }
+                    CommandEvent::Error(error) => {
+                        eprintln!("Assistant Core process error: {error}");
+                    }
+                    _ => {}
+                }
+            }
+        });
     }
+
+    println!("✅ Assistant core started");
+    Ok(())
 }
 
 fn stop_assistant_core_process() -> Result<(), String> {
-    let mut process = ASSISTANT_PROCESS
-        .lock()
-        .map_err(|_| "Failed to lock assistant process")?;
+    let current = {
+        let mut process = ASSISTANT_PROCESS
+            .lock()
+            .map_err(|_| "Failed to lock assistant process")?;
+        process.take()
+    };
 
-    if let Some(current) = process.as_mut() {
-        let _ = current.child.kill();
-        let _ = current.child.wait();
-
+    if let Some(current) = current {
+        current.stop();
         println!("🛑 Assistant core stopped");
     }
-
-    *process = None;
 
     Ok(())
 }
@@ -364,6 +443,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             start_assistant_core,

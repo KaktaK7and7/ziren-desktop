@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ziren-desktop",
+  "productName": "Ziren Assistant",
   "version": "0.1.0",
   "identifier": "com.ziren.assistant",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Ziren_assistant",
+        "title": "Ziren Assistant",
         "width": 500,
         "height": 600,
         "minWidth": 500,
@@ -23,12 +23,34 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:8787 https://www.ziren.store",
+        "img-src": "'self' asset: http://asset.localhost blob: data: https://www.ziren.store https://res.cloudinary.com",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "script-src": "'self'",
+        "object-src": "'none'",
+        "base-uri": "'self'"
+      },
+      "devCsp": {
+        "default-src": "'self' customprotocol: asset:",
+        "connect-src": "'self' ipc: http://ipc.localhost http://127.0.0.1:8787 http://127.0.0.1:1420 ws://127.0.0.1:1420 https://www.ziren.store https://auth-site-p0-security-test.up.railway.app",
+        "img-src": "'self' asset: http://asset.localhost blob: data: https://www.ziren.store https://auth-site-p0-security-test.up.railway.app https://res.cloudinary.com",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "script-src": "'self'",
+        "object-src": "'none'",
+        "base-uri": "'self'"
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": [
+      "binaries/assistant-core"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -60,6 +60,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate release configuration contract
+        shell: pwsh
+        run: |
+          $base = Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $release = Get-Content "src-tauri/tauri.release.conf.json" -Raw | ConvertFrom-Json
+          $package = Get-Content "package.json" -Raw | ConvertFrom-Json
+
+          if ($base.productName -ne "Ziren Assistant") { throw "Unexpected productName" }
+          if ($base.version -ne $package.version) { throw "Tauri/package.json release versions differ" }
+          if ($release.bundle.targets.Count -ne 1 -or $release.bundle.targets[0] -ne "nsis") {
+            throw "Windows release must build the NSIS installer"
+          }
+          if ($release.bundle.externalBin -notcontains "binaries/assistant-core") {
+            throw "Release config does not bundle assistant-core sidecar"
+          }
+          if (-not $release.bundle.resources.PSObject.Properties.Name.Contains("resources/")) {
+            throw "Release config does not bundle verified resources"
+          }
+          $csp = $release.app.security.csp
+          if (-not $csp) { throw "Release CSP must not be null" }
+          if ($csp.'connect-src' -notmatch [regex]::Escape("http://127.0.0.1:8787")) {
+            throw "Release CSP does not allow the local Core API"
+          }
+          if ($csp.'connect-src' -notmatch [regex]::Escape("https://www.ziren.store")) {
+            throw "Release CSP does not allow the production Ziren origin"
+          }
+          if ($csp.'object-src' -ne "'none'" -or $csp.'frame-src' -ne "'none'") {
+            throw "Release CSP must block object/frame embedding"
+          }
+
       - name: Set up stable Rust
         uses: dtolnay/rust-toolchain@stable
         with:

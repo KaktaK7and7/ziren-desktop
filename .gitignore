@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Release staging payload (generated from verified Core CI artifact)
+src-tauri/binaries/assistant-core-*.exe
+src-tauri/resources/models/vosk/vosk-model-small-ru-0.22/
+src-tauri/resources/release-manifest.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,91 @@
+.core-error-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(41, 207, 255, 0.08), transparent 38%),
+    #050a11;
+  color: #eafaff;
+}
+
+.core-error-card {
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(255, 96, 113, 0.32);
+  border-radius: 18px;
+  background: rgba(8, 15, 24, 0.96);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.48);
+}
+
+.core-error-kicker {
+  color: #ff7d8d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.core-error-card h1 {
+  margin: 9px 0 10px;
+  font-size: 26px;
+}
+
+.core-error-card > p,
+.core-error-card li {
+  color: #9fb1c3;
+  line-height: 1.55;
+}
+
+.core-error-detail {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.core-error-detail strong {
+  font-size: 12px;
+  color: #dff9ff;
+}
+
+.core-error-detail code {
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #ffb7c0;
+  font: 12px/1.5 "JetBrains Mono", "Consolas", monospace;
+}
+
+.core-error-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.core-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.core-error-actions button {
+  border: 1px solid rgba(77, 238, 255, 0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #defaff;
+  cursor: pointer;
+}
+
+.core-error-actions button.is-primary {
+  background: rgba(77, 238, 255, 0.12);
+}
+
+.core-error-actions button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

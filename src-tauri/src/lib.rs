@@ -1,8 +1,10 @@
 use once_cell::sync::Lazy;
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
 use tauri::{
+    path::BaseDirectory,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder,
     WindowEvent,
@@ -18,6 +20,7 @@ struct AssistantProcess {
 static ASSISTANT_PROCESS: Lazy<Mutex<Option<AssistantProcess>>> = Lazy::new(|| Mutex::new(None));
 
 const PRODUCTION_AUTH_SITE_URL: &str = "https://www.ziren.store";
+const RELEASE_VOSK_RELATIVE_PATH: &str = "models/vosk/vosk-model-small-ru-0.22";
 
 fn validate_auth_site_url(configured_url: &str) -> Result<String, String> {
     let normalized_url = configured_url.trim().trim_end_matches('/');
@@ -48,6 +51,45 @@ fn validate_auth_site_url(configured_url: &str) -> Result<String, String> {
     Ok(normalized_url.to_string())
 }
 
+#[cfg(not(debug_assertions))]
+fn resolve_release_core_paths(app: &AppHandle) -> Result<(PathBuf, PathBuf), String> {
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("Unable to resolve Ziren executable path: {error}"))?;
+    let install_dir = executable
+        .parent()
+        .ok_or_else(|| "Unable to resolve Ziren installation directory".to_string())?;
+    let core_path = install_dir.join("assistant-core.exe");
+
+    if !core_path.is_file() {
+        return Err(format!(
+            "Assistant Core is missing from the Ziren installation: {}. Reinstall Ziren.",
+            core_path.display()
+        ));
+    }
+
+    let model_path = app
+        .path()
+        .resolve(RELEASE_VOSK_RELATIVE_PATH, BaseDirectory::Resource)
+        .map_err(|error| format!("Unable to resolve bundled Vosk model: {error}"))?;
+
+    if !model_path.is_dir() {
+        return Err(format!(
+            "Bundled Vosk model is missing: {}. Reinstall Ziren.",
+            model_path.display()
+        ));
+    }
+
+    for marker in ["am", "conf", "graph"] {
+        if !model_path.join(marker).exists() {
+            return Err(format!(
+                "Bundled Vosk model is incomplete (missing {marker}). Reinstall Ziren."
+            ));
+        }
+    }
+
+    Ok((core_path, model_path))
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -55,6 +97,7 @@ fn greet(name: &str) -> String {
 
 #[tauri::command]
 fn start_assistant_core(
+    app: AppHandle,
     desktop_token: String,
     local_api_token: String,
     auth_site_url: String,
@@ -95,6 +138,7 @@ fn start_assistant_core(
 
     #[cfg(debug_assertions)]
     let child = {
+        let _ = &app;
         let project_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
@@ -112,6 +156,13 @@ fn start_assistant_core(
             .join("Scripts")
             .join("python.exe");
 
+        if !python_path.is_file() {
+            return Err(format!(
+                "Assistant Core Python environment not found: {}",
+                python_path.display()
+            ));
+        }
+
         Command::new(python_path)
             .arg("-m")
             .arg("app.main")
@@ -123,11 +174,20 @@ fn start_assistant_core(
     };
 
     #[cfg(not(debug_assertions))]
-    let child = Command::new("assistant-core.exe")
-        .env("AUTH_SITE_URL", &auth_site_url)
-        .env("ZIREN_DESKTOP_TOKEN", desktop_token)
-        .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
-        .spawn();
+    let child = {
+        let (core_path, vosk_model_path) = resolve_release_core_paths(&app)?;
+        let install_dir = core_path
+            .parent()
+            .ok_or_else(|| "Assistant Core installation directory is invalid".to_string())?;
+
+        Command::new(&core_path)
+            .current_dir(install_dir)
+            .env("AUTH_SITE_URL", &auth_site_url)
+            .env("ZIREN_DESKTOP_TOKEN", desktop_token)
+            .env("ZIREN_LOCAL_API_TOKEN", local_api_token)
+            .env("ZIREN_VOSK_MODEL_PATH", vosk_model_path)
+            .spawn()
+    };
 
     match child {
         Ok(child) => {
@@ -233,16 +293,12 @@ fn show_listening_overlay(app: AppHandle) -> Result<(), String> {
 
     let _ = window.set_ignore_cursor_events(true);
     let _ = window.set_focusable(false);
-
-    // Форсим пересоздание topmost слоя Windows
     let _ = window.hide();
 
     std::thread::sleep(std::time::Duration::from_millis(16));
 
     window.show().map_err(|error| error.to_string())?;
-
     let _ = window.unminimize();
-
     window
         .set_always_on_top(true)
         .map_err(|error| error.to_string())?;
@@ -326,7 +382,6 @@ fn hide_listening_overlay(app: AppHandle) -> Result<(), String> {
 fn show_tray_menu(app: &AppHandle, x: f64, y: f64) {
     if let Some(window) = app.get_webview_window("tray-menu") {
         let _ = window.set_position(tauri::PhysicalPosition::new(x as i32 - 240, y as i32 - 170));
-
         let _ = window.show();
         let _ = window.set_focus();
     }
@@ -433,7 +488,6 @@ pub fn run() {
                         ..
                     } => {
                         let app = tray.app_handle();
-
                         show_tray_menu(app, position.x, position.y);
                     }
 

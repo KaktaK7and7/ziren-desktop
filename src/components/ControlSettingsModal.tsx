@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 import {
   fetchCompanionSettings,
@@ -9,6 +10,12 @@ import {
   fetchFeatureTriggers,
   type FeatureTriggerInfo,
 } from "../services/featureTriggers";
+import { requestOnboardingOpen } from "../services/onboarding";
+import {
+  fetchSubscriptionStatus,
+  getPricingUrl,
+  type SubscriptionStatus,
+} from "../services/subscription";
 import "./ControlSettingsModal.css";
 
 
@@ -24,6 +31,7 @@ export default function ControlSettingsModal({
 }: Props) {
   const [settings, setSettings] = useState<CompanionSettings | null>(null);
   const [features, setFeatures] = useState<FeatureTriggerInfo[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,11 +40,16 @@ export default function ControlSettingsModal({
   useEffect(() => {
     let active = true;
 
-    Promise.all([fetchCompanionSettings(), fetchFeatureTriggers()])
-      .then(([loadedSettings, loadedFeatures]) => {
+    Promise.all([
+      fetchCompanionSettings(),
+      fetchFeatureTriggers(),
+      fetchSubscriptionStatus().catch(() => null),
+    ])
+      .then(([loadedSettings, loadedFeatures, loadedSubscription]) => {
         if (!active) return;
         setSettings(loadedSettings);
         setFeatures(loadedFeatures.filter((feature) => feature.feature_id !== "system.test"));
+        setSubscription(loadedSubscription);
         setError("");
       })
       .catch((reason) => {
@@ -65,15 +78,24 @@ export default function ControlSettingsModal({
     );
   }, [features, query]);
 
+  const melissaLocked = Boolean(
+    subscription
+    && !subscription.beta_override
+    && subscription.plan === "free",
+  );
+
   async function updateModes(patch: Partial<CompanionSettings>) {
     if (!settings || saving) return;
     const previous = settings;
     const next = { ...settings, ...patch };
 
-    // At least one command route must stay enabled so the user cannot
-    // accidentally make both wake words useless from this screen.
     if (!next.melissa_command_mode_enabled && !next.snake_command_mode_enabled) {
       setError("Оставь включённым хотя бы один режим команд: Мелиссу или Змею.");
+      return;
+    }
+
+    if (patch.melissa_command_mode_enabled && melissaLocked) {
+      setError("Мелисса доступна на тарифах Plus и Pro. Змея остаётся бесплатной.");
       return;
     }
 
@@ -88,6 +110,11 @@ export default function ControlSettingsModal({
     } finally {
       setSaving(false);
     }
+  }
+
+  function reopenOnboarding() {
+    onClose();
+    window.setTimeout(() => requestOnboardingOpen(), 0);
   }
 
   return (
@@ -107,21 +134,58 @@ export default function ControlSettingsModal({
 
         {!loading && settings && (
           <>
+            {subscription && (
+              <section className="control-subscription-card">
+                <div className="control-subscription-main">
+                  <span className="control-subscription-kicker">ТВОЙ ТАРИФ</span>
+                  <div className="control-subscription-title">
+                    <strong>{subscription.plan_name || subscription.plan.toUpperCase()}</strong>
+                    {subscription.beta_override && <b>BETA ACCESS</b>}
+                  </div>
+                  <p>
+                    {subscription.beta_override
+                      ? "Платёжный режим ещё не включён. Мелисса открыта для тестирования, а расход AI уже учитывается."
+                      : subscription.ai_enabled
+                        ? "Облачные функции Мелиссы активны."
+                        : "Локальная Змея активна. Для облачной Мелиссы нужен Plus или Pro."}
+                  </p>
+                </div>
+
+                {subscription.plan !== "free" && (
+                  <div className="control-subscription-usage">
+                    <div>
+                      <span>AI-ресурс</span>
+                      <strong>{Math.max(0, Math.min(100, subscription.ai_usage_percent || 0))}%</strong>
+                    </div>
+                    <i>
+                      <b style={{ width: `${Math.max(0, Math.min(100, subscription.ai_usage_percent || 0))}%` }} />
+                    </i>
+                    <small>Локальные команды Змеи ресурс не расходуют.</small>
+                  </div>
+                )}
+
+                <button type="button" onClick={() => void openUrl(getPricingUrl())}>
+                  Тарифы
+                </button>
+              </section>
+            )}
+
             <div className="control-mode-grid">
-              <article className={settings.melissa_command_mode_enabled ? "is-enabled" : ""}>
+              <article className={`${settings.melissa_command_mode_enabled ? "is-enabled" : ""}${melissaLocked ? " is-locked" : ""}`}>
                 <div>
-                  <span className="control-mode-tag">SMART / FUTURE PAID</span>
+                  <span className="control-mode-tag">SMART / PLUS + PRO</span>
                   <h3>Мелисса</h3>
                   <p>
                     Понимает команду естественным языком. Нейросеть выбирает только разрешённый
                     action ID, а действие проверяет и выполняет локальный Core.
                   </p>
+                  {melissaLocked && <small className="control-mode-lock">Нужен тариф Plus или Pro</small>}
                 </div>
                 <label className="control-mode-switch">
                   <input
                     type="checkbox"
-                    checked={settings.melissa_command_mode_enabled}
-                    disabled={saving}
+                    checked={settings.melissa_command_mode_enabled && !melissaLocked}
+                    disabled={saving || melissaLocked}
                     onChange={(event) => void updateModes({ melissa_command_mode_enabled: event.target.checked })}
                   />
                   <span />
@@ -159,6 +223,9 @@ export default function ControlSettingsModal({
                 placeholder="Найти функцию или команду"
                 onChange={(event) => setQuery(event.target.value)}
               />
+              <button type="button" onClick={reopenOnboarding}>
+                Повторить настройку
+              </button>
               <button
                 type="button"
                 onClick={() => {

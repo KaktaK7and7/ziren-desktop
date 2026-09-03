@@ -1,6 +1,6 @@
 [package]
 name = "ziren-desktop"
-version = "1.0.0-rc.1"
+version = "0.1.0"
 description = "Ziren Assistant desktop client"
 authors = ["Ziren"]
 edition = "2021"
